@@ -1,0 +1,360 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Los tokens (colores, radios, sombras, movimiento) viven en styles/tokens.css y styles/motion.css,
+   importados desde main.tsx. Aquí solo se definen las clases del sistema. */
+
+@layer base {
+  html {
+    -webkit-tap-highlight-color: transparent;
+    color-scheme: light;
+  }
+  @media not print { html.dark { color-scheme: dark; } }
+
+  body {
+    @apply bg-paper text-ink-dark font-sans antialiased;
+  }
+
+  /* Tipografía de la maqueta: el cuerpo ya es Inter (font-sans, cargada en index.html);
+     los títulos y las cifras destacadas usan Sora. */
+  h1, h2, h3 { font-family: 'Sora', system-ui, sans-serif; }
+  .font-disp { font-family: 'Sora', system-ui, sans-serif; }
+
+  /* El lienzo (incluidas las zonas seguras del iPhone y el rebote al deslizar) sigue el
+     tema activo: oscuro #0B1120 por defecto, claro al pulsar el boton junto a la campana. */
+  html, body { background-color: var(--nc-bg); }
+
+  /* Ambiente: dos resplandores azules muy tenues, en una capa fija propia (sin repintados al hacer scroll). */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background:
+      radial-gradient(900px 520px at 8% -8%, rgb(var(--c-primary) / 0.10), transparent 62%),
+      radial-gradient(760px 460px at 96% 4%, rgb(var(--c-primary) / 0.07), transparent 60%);
+  }
+
+  /* En las pantallas de acceso, todo el lienzo (incluidas las zonas seguras del iPhone) es azul profundo */
+  html:has(.auth-bg), body:has(.auth-bg) { background-color: rgb(var(--c-navy)); }
+  body:has(.auth-bg)::before { display: none; }
+
+  input[type='checkbox'], input[type='radio'] { accent-color: rgb(var(--c-primary-fill)); }
+  /* Los campos de fecha del iPhone no se encogen solos: sin min-width 0, el de la
+     izquierda se desbordaba y quedaba encima del de la derecha. */
+  input[type='date'] { min-width: 0; }
+  :focus:not(:focus-visible) { outline: none; }
+
+  :focus-visible {
+    outline: 2px solid rgb(var(--c-primary));
+    outline-offset: 2px;
+  }
+  ::selection { background: rgb(var(--c-primary) / 0.22); }
+}
+
+/* Impresión: los comprobantes (pago y cotización) se imprimen solos; los reportes
+   se imprimen completos, ocultando el menú y los controles (.print-hide). */
+.print-only { display: none; }
+
+@media print {
+  html, body { background: #fff !important; height: auto !important; min-height: 0 !important; }
+  /* La altura mínima de pantalla completa (100vh) no debe contar al imprimir: puede empujar una página en blanco. */
+  #root, #root > *, .min-h-screen { min-height: 0 !important; height: auto !important; }
+  body::before { display: none; }
+  /* Con un comprobante abierto se imprime solo el comprobante: está en un portal, fuera de #root,
+     así que ocultar la app completa evita páginas en blanco. */
+  body:has(#receipt-content, #quote-receipt-content) > #root { display: none !important; }
+  .print-hide { display: none !important; }
+  .print-only { display: block !important; }
+}
+
+@layer components {
+  /* ───────── Tipografía ───────── */
+  .t-h1 { font-family: 'Sora', system-ui, sans-serif; font-size: clamp(1.5rem, 1.2rem + 1vw, 2rem); font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
+  .t-h2 { font-family: 'Sora', system-ui, sans-serif; font-size: clamp(1.25rem, 1.1rem + 0.6vw, 1.75rem); font-weight: 600; letter-spacing: -0.015em; line-height: 1.2; }
+  .t-h3 { font-family: 'Sora', system-ui, sans-serif; font-size: clamp(1.05rem, 1rem + 0.3vw, 1.25rem); font-weight: 600; letter-spacing: -0.01em; line-height: 1.25; }
+  .t-label { font-size: 0.75rem; font-weight: 500; letter-spacing: 0.02em; color: rgb(var(--c-text-muted)); }
+  .t-kpi { font-family: 'Sora', system-ui, sans-serif; font-size: clamp(1.375rem, 1rem + 0.9vw, 1.75rem); font-weight: 700; letter-spacing: -0.02em; line-height: 1.1; font-variant-numeric: tabular-nums; }
+
+  /* Cifra monetaria: Inter con numerales tabulares, para que las columnas alineen. */
+  .money {
+    font-family: 'Sora', system-ui, sans-serif;
+    font-variant-numeric: tabular-nums;
+    font-feature-settings: 'tnum';
+    letter-spacing: -0.01em;
+  }
+  .money-due { @apply text-danger; }
+  .money-paid { @apply text-success-text; }
+  .ledger-rule { @apply border-b border-line; }
+
+  /* ───────── Botones ───────── */
+  .btn-solid, .btn-gold, .btn-secondary, .btn-primary, .btn-ghost, .btn-danger {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 0.6rem 1rem;
+    font-size: 0.875rem;
+    font-weight: 600;
+    line-height: 1.25rem;
+    border-radius: var(--radius-control);
+    border: 1px solid transparent;
+    user-select: none;
+    transition:
+      transform var(--dur-fast) var(--ease-out),
+      background-color var(--dur-fast) ease,
+      box-shadow var(--dur-base) var(--ease-out),
+      border-color var(--dur-fast) ease,
+      opacity var(--dur-fast) ease;
+  }
+  .btn-solid:hover:not(:disabled), .btn-gold:hover:not(:disabled),
+  .btn-secondary:hover:not(:disabled), .btn-primary:hover:not(:disabled),
+  .btn-danger:hover:not(:disabled) { transform: translateY(-1px); }
+  .btn-solid:active:not(:disabled), .btn-gold:active:not(:disabled),
+  .btn-secondary:active:not(:disabled), .btn-primary:active:not(:disabled),
+  .btn-ghost:active:not(:disabled), .btn-danger:active:not(:disabled) { transform: translateY(0) scale(0.98); }
+  .btn-solid:disabled, .btn-gold:disabled, .btn-secondary:disabled, .btn-primary:disabled,
+  .btn-ghost:disabled, .btn-danger:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  /* Acción principal (azul eléctrico). "btn-gold" es el nombre anterior. */
+  .btn-solid, .btn-gold {
+    color: #fff;
+    background: linear-gradient(180deg, rgb(44 108 238) 0%, rgb(var(--c-primary-fill)) 100%);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.28) inset, 0 8px 18px -10px rgb(var(--c-primary-fill) / 0.85);
+  }
+  .btn-solid:hover:not(:disabled), .btn-gold:hover:not(:disabled) {
+    background: linear-gradient(180deg, rgb(46 110 240) 0%, rgb(29 86 216) 100%);
+    box-shadow: 0 1px 0 rgb(255 255 255 / 0.32) inset, 0 12px 22px -10px rgb(var(--c-primary-fill) / 0.9);
+  }
+  /* Acción secundaria (azul claro tintado). "btn-primary" es el nombre anterior. */
+  .btn-secondary, .btn-primary {
+    color: rgb(var(--c-primary-dark));
+    background: rgb(var(--c-primary-light));
+    border-color: rgb(var(--c-primary) / 0.20);
+  }
+  .btn-secondary:hover:not(:disabled), .btn-primary:hover:not(:disabled) {
+    background: rgb(var(--c-primary) / 0.16);
+    border-color: rgb(var(--c-primary) / 0.32);
+  }
+  .btn-ghost { color: rgb(var(--c-text-muted)); background: transparent; }
+  .btn-ghost:hover:not(:disabled) { background: rgb(var(--c-primary) / 0.08); color: rgb(var(--c-text)); }
+  .btn-danger { color: #fff; background: rgb(var(--c-danger)); box-shadow: 0 8px 18px -10px rgb(var(--c-danger) / 0.8); }
+  .btn-danger:hover:not(:disabled) { background: rgb(var(--c-danger) / 0.9); }
+
+  /* Cargando: se marca el botón con data-loading="true" */
+  [data-loading="true"] { pointer-events: none; opacity: 0.75; position: relative; }
+  [data-loading="true"]::after {
+    content: '';
+    width: 0.9em; height: 0.9em; margin-left: 0.5rem;
+    border: 2px solid currentColor; border-right-color: transparent; border-radius: 9999px;
+    animation: spin 0.7s linear infinite;
+  }
+
+  /* ───────── Formularios ───────── */
+  .field-label { display: block; margin-bottom: 0.25rem; font-size: 0.8125rem; font-weight: 500; color: rgb(var(--c-text) / 0.8); }
+  .field-input {
+    width: 100%;
+    padding: 0.625rem 0.75rem;
+    font-size: 0.875rem;
+    color: rgb(var(--c-text));
+    background: rgb(var(--c-surface));
+    border: 1px solid rgb(var(--c-line));
+    border-radius: var(--radius-control);
+    transition: border-color var(--dur-fast) ease, box-shadow var(--dur-base) var(--ease-out), background-color var(--dur-fast) ease;
+  }
+  .field-input::placeholder { color: rgb(var(--c-text-muted) / 0.9); }
+  .field-input:hover:not(:disabled) { border-color: rgb(var(--c-primary) / 0.45); }
+  .field-input:focus { outline: none; border-color: rgb(var(--c-primary)); box-shadow: var(--glow-primary); }
+  .field-input:disabled { opacity: 0.55; cursor: not-allowed; background: rgb(var(--c-primary) / 0.04); }
+  .field-input[aria-invalid="true"] { border-color: rgb(var(--c-danger)); }
+  select.field-input {
+    appearance: none;
+    -webkit-appearance: none;
+    padding-right: 2.25rem;
+    background-repeat: no-repeat;
+    background-position: right 0.75rem center;
+    background-size: 1rem;
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%235B6B85' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+  :root.dark select.field-input {
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%2394A8C6' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E");
+  }
+
+  /* ───────── Superficies ───────── */
+  /* Tarjeta normal: superficie sólida (sin blur; el vidrio se reserva para elementos flotantes). */
+  .glass-card {
+    position: relative;
+    border-radius: var(--radius-card);
+    background: rgb(var(--c-surface));
+    border: 1px solid var(--card-border);
+    box-shadow: var(--shadow-card);
+  }
+
+  /* Liquid Glass: solo para lo que flota (header, desplegables, modales, tooltips). */
+  .glass-panel {
+    --glass-alpha: 0.7;
+    --glass-blur: 14px;
+    position: relative;
+    border-radius: var(--radius-panel);
+    background: rgb(var(--glass-rgb) / var(--glass-alpha));
+    border: 1px solid var(--glass-border);
+    -webkit-backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+    backdrop-filter: blur(var(--glass-blur)) saturate(1.5);
+    box-shadow: var(--shadow-float), 0 1px 0 var(--glass-highlight) inset;
+  }
+  .glass-subtle { --glass-alpha: 0.55; --glass-blur: 8px; }
+  .glass-medium { --glass-alpha: 0.72; --glass-blur: 14px; }
+  .glass-strong { --glass-alpha: 0.9;  --glass-blur: 22px; }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+    .glass-panel { background: rgb(var(--c-surface) / 0.97); }
+  }
+
+  /* ───────── Insignias de estado ───────── */
+  .badge { display: inline-flex; align-items: center; gap: 0.25rem; padding: 0.25rem 0.625rem; font-size: 0.75rem; font-weight: 500; border-radius: 9999px; }
+  .badge-paid, .badge-success { @apply badge; background: rgb(var(--c-success) / 0.13); color: rgb(var(--c-success-text)); }
+  .badge-due, .badge-danger { @apply badge; background: rgb(var(--c-danger) / 0.08); color: rgb(var(--c-danger)); }
+  .badge-gold, .badge-warning { @apply badge; background: rgb(var(--c-warning) / 0.16); color: rgb(var(--c-warning-text)); }
+  .badge-info { @apply badge; background: rgb(var(--c-primary) / 0.12); color: rgb(var(--c-primary-dark)); }
+  .badge-neutral { @apply badge; background: rgb(var(--c-text) / 0.06); color: rgb(var(--c-text-muted)); }
+
+  /* ───────── Tablas ───────── */
+  .table-modern { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.875rem; }
+  .table-modern thead th {
+    position: sticky; top: 0; z-index: 1;
+    padding: 0.625rem 0.75rem; text-align: left; font-size: 0.75rem; font-weight: 600;
+    color: rgb(var(--c-text-muted));
+    background-color: rgb(var(--c-surface));
+    background-image: linear-gradient(rgb(var(--c-primary) / 0.05), rgb(var(--c-primary) / 0.05));
+  }
+  .table-modern thead th:first-child { border-top-left-radius: var(--radius-control); }
+  .table-modern thead th:last-child { border-top-right-radius: var(--radius-control); }
+  .table-modern tbody td { padding: 0.75rem; border-bottom: 1px solid rgb(var(--c-line) / 0.7); }
+  .table-modern tbody tr { transition: background-color var(--dur-fast) ease; }
+  .table-modern tbody tr:hover { background: rgb(var(--c-primary) / 0.05); }
+
+  /* ───────── Navegación (barra lateral y drawer) ───────── */
+  .nav-link {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0.75rem;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: rgb(var(--c-on-navy) / 0.72);
+    border-radius: 12px;
+    transition: background-color var(--dur-fast) ease, color var(--dur-fast) ease, transform var(--dur-fast) var(--ease-out);
+  }
+  .nav-link:hover { background: rgb(255 255 255 / 0.07); color: rgb(var(--c-on-navy)); transform: translateX(2px); }
+  .nav-link[aria-current="page"] {
+    color: #fff;
+    background: linear-gradient(135deg, rgb(44 108 238) 0%, rgb(37 99 235) 100%);
+    box-shadow: 0 10px 22px -12px rgb(37 99 235 / 0.95), 0 1px 0 rgb(255 255 255 / 0.25) inset;
+    transform: none;
+  }
+  .nav-link:focus-visible { outline-color: rgb(var(--c-on-navy)); }
+  .nav-group-title {
+    display: flex; width: 100%; align-items: center; justify-content: space-between;
+    padding: 0.4rem 0.75rem; font-size: 0.6875rem; font-weight: 600; letter-spacing: 0.08em; text-transform: uppercase;
+    color: rgb(var(--c-on-navy) / 0.62); border-radius: 8px; transition: color var(--dur-fast) ease;
+  }
+  .nav-group-title:hover { color: rgb(var(--c-on-navy) / 0.9); }
+
+  /* Elevación al pasar el cursor (tarjetas interactivas: KPI, acciones rápidas) */
+  .card-hover { transition: transform var(--dur-base) var(--ease-out), box-shadow var(--dur-base) var(--ease-out), border-color var(--dur-fast) ease; }
+  .card-hover:hover { transform: translateY(-2px); box-shadow: var(--shadow-float); border-color: rgb(var(--c-primary) / 0.28); }
+  .card-hover:active { transform: translateY(0) scale(0.995); }
+
+  .skeleton { background: rgb(var(--c-primary) / 0.09); border-radius: var(--radius-control); animation: skeleton-pulse 1.4s ease-in-out infinite; }
+  @keyframes skeleton-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+
+  /* Fondo de las pantallas de acceso: azul profundo con dos resplandores */
+  .auth-bg {
+    background:
+      radial-gradient(720px 460px at 12% 8%, rgb(37 99 235 / 0.38), transparent 62%),
+      radial-gradient(640px 420px at 92% 92%, rgb(96 165 250 / 0.22), transparent 60%),
+      rgb(var(--c-navy));
+  }
+
+  /* ───────── Luz que sigue al cursor + micro-parallax ─────────
+     Solo con puntero fino y sin "reducir movimiento". Lo controla hooks/usePointerLight.ts:
+     un único listener, con requestAnimationFrame, marca la tarjeta bajo el cursor (data-lit). */
+  @media (hover: hover) and (pointer: fine) and (prefers-reduced-motion: no-preference) {
+    .glass-card, .glass-panel { isolation: isolate; }
+    .glass-card::before, .glass-panel::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      z-index: -1;
+      border-radius: inherit;
+      pointer-events: none;
+      background: radial-gradient(340px circle at var(--mx, 50%) var(--my, 0%), rgb(var(--c-primary) / 0.11), transparent 62%);
+      opacity: 0;
+      transition: opacity var(--dur-slow) var(--ease-out);
+    }
+    [data-lit='true']::before { opacity: 1; }
+    [data-parallax] {
+      transform: translate3d(calc(var(--px, 0) * 5px), calc(var(--py, 0) * 4px), 0);
+      transition: transform var(--dur-slow) var(--ease-out);
+    }
+  }
+
+  /* Estados de éxito y error en campos y botones (junto a hover, foco, deshabilitado y cargando) */
+  .field-input[data-state='success'] { border-color: rgb(var(--c-success)); }
+  .field-input[data-state='error'], .field-input[aria-invalid='true'] { border-color: rgb(var(--c-danger)); }
+  .btn-solid[data-state='success'], .btn-gold[data-state='success'] { background: rgb(var(--c-success)); box-shadow: 0 8px 18px -10px rgb(var(--c-success) / 0.8); }
+
+  .kbd {
+    display: inline-flex; align-items: center; padding: 0.1rem 0.4rem; font-size: 0.6875rem; font-weight: 600;
+    color: rgb(var(--c-text-muted)); background: rgb(var(--c-surface) / 0.7);
+    border: 1px solid rgb(var(--c-line)); border-radius: 6px;
+  }
+
+  .skip-link {
+    position: absolute; left: 0.75rem; top: -3rem; z-index: 100; padding: 0.5rem 0.9rem;
+    color: #fff; background: rgb(var(--c-primary-fill)); border-radius: 10px; font-size: 0.875rem; font-weight: 600;
+    transition: top var(--dur-fast) ease;
+  }
+  .skip-link:focus { top: 0.75rem; }
+
+  .focus-glow { transition: border-color var(--dur-fast) ease, box-shadow var(--dur-base) var(--ease-out); }
+  .focus-glow:focus-within { border-color: rgb(var(--c-primary)); box-shadow: var(--glow-primary); }
+
+  .scroll-thin { scrollbar-width: thin; scrollbar-color: rgb(255 255 255 / 0.18) transparent; }
+}
+
+/* Barra deslizante de la calculadora (maqueta): el relleno va en línea (style) según el
+   valor; aquí solo van la pista y el botón redondo blanco, en Chrome/Safari y Firefox. */
+.nc-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 8px;
+  border-radius: 9999px;
+  outline: none;
+  cursor: pointer;
+}
+.nc-slider::-webkit-slider-runnable-track { height: 8px; border-radius: 9999px; background: transparent; }
+.nc-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 22px;
+  height: 22px;
+  margin-top: -7px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}
+.nc-slider::-moz-range-track { height: 8px; border-radius: 9999px; background: transparent; }
+.nc-slider::-moz-range-thumb {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #fff;
+  border: none;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.4);
+  cursor: pointer;
+}

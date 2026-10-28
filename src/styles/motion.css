@@ -1,0 +1,80 @@
+/* ==========================================================================
+   NEXCREDIT — MOVIMIENTO
+   Solo se animan transform y opacity (baratos para la GPU).
+   ========================================================================== */
+
+@keyframes page-in {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes pop-in {
+  from { opacity: 0; transform: translateY(-4px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes modal-in {
+  from { opacity: 0; transform: translateY(10px) scale(0.98); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes fade-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes drawer-in {
+  from { transform: translateX(-100%); }
+  to   { transform: none; }
+}
+@keyframes sheet-in {
+  from { transform: translateY(24px); opacity: 0; }
+  to   { transform: none; opacity: 1; }
+}
+
+.page-enter     { animation: page-in 260ms var(--ease-out) backwards; }
+.popover-enter  { animation: pop-in 180ms var(--ease-out) backwards; }
+.modal-enter    { animation: modal-in 260ms var(--ease-out) backwards; }
+.overlay-enter  { animation: fade-in 200ms ease-out backwards; }
+.drawer-enter   { animation: drawer-in 280ms var(--ease-out) backwards; }
+.sheet-enter    { animation: sheet-in 260ms var(--ease-out) backwards; }
+
+/* Apertura/cierre suave de grupos sin medir alturas con JavaScript */
+.collapse-grid {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows var(--dur-base) var(--ease-out);
+}
+.collapse-grid[data-open="true"] { grid-template-rows: 1fr; }
+.collapse-grid > div { overflow: hidden; min-height: 0; }
+
+/* fill-mode: backwards a propósito. Con "both" el navegador conserva transform/opacity al terminar y,
+   en Safari, eso convierte al elemento en contenedor de todo lo que tenga position: fixed (los modales
+   quedaban atrapados dentro de la página). */
+
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-5px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-3px); }
+  80% { transform: translateX(3px); }
+}
+
+/* Intro (maqueta v86): el nombre entra letra por letra */
+@keyframes letter-in {
+  from { opacity: 0; transform: translateY(16px) scale(0.96); }
+  to   { opacity: 1; transform: none; }
+}
+.splash-letter { display: inline-block; animation: letter-in 480ms var(--ease-out) backwards; }
+.splash-fade   { animation: fade-in 500ms ease-out 1000ms backwards; }
+.splash-btn    { animation: fade-in 500ms ease-out 1400ms backwards; }
+
+/* Estado de error: todo aviso con role="alert" se sacude una vez para llamar la atención */
+[role="alert"] { animation: shake 360ms var(--ease-out) backwards; }
+
+/* Accesibilidad: quien pide menos movimiento, lo recibe */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

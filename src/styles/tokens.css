@@ -1,0 +1,136 @@
+/* ==========================================================================
+   NEXCREDIT — TOKENS DE DISEÑO (única fuente de verdad)
+   Toda la identidad visual sale de este archivo. Para cambiar la marca:
+   edita estas variables; nada más en la app necesita tocarse.
+   Los colores están como tripletas "R G B" para poder usar transparencia:
+   rgb(var(--c-primary) / 0.5)
+   ========================================================================== */
+
+:root {
+  /* — Marca — */
+  --c-primary: 37 99 235;          /* azul eléctrico: textos de acento, bordes, foco */
+  --c-primary-fill: 37 99 235;     /* relleno de botones (igual en claro y oscuro) */
+  --c-primary-dark: 30 64 175;     /* azul profundo: énfasis sobre fondo claro */
+  --c-primary-light: 219 232 255;  /* azul claro: fondos tintados, estados secundarios */
+  --c-navy: 10 26 58;              /* estructura: barra lateral */
+  --c-navy-light: 22 47 96;
+  --c-on-navy: 234 241 255;        /* texto sobre el azul profundo */
+
+  /* — Superficies y texto — */
+  --c-background: 243 247 252;     /* fondo de la app */
+  --c-surface: 255 255 255;        /* tarjetas */
+  --c-text: 11 27 51;              /* texto principal */
+  --c-text-muted: 91 107 133;      /* texto secundario */
+  --c-line: 210 221 238;           /* separadores */
+
+  /* — Estados (solo para significado, nunca decorativos) — */
+  --c-success: 15 157 107;
+  --c-success-text: 11 122 84;
+  --c-warning: 217 138 11;
+  --c-warning-text: 146 84 0;
+  --c-danger: 201 53 53;
+  --c-info: 37 99 235;
+
+  /* — Series de gráficas (familia azul; verde/ámbar/rojo se usan solo para estados) — */
+  --chart-1: 37 99 235;
+  --chart-2: 96 165 250;
+  --chart-3: 30 64 175;
+  --chart-4: 147 197 253;
+  --chart-5: 14 165 233;
+
+  /* — Vidrio (Liquid Glass) — */
+  --glass-rgb: 255 255 255;
+  --glass-border: rgb(30 80 140 / 0.14);
+  --glass-highlight: rgb(255 255 255 / 0.75);
+  --card-border: rgb(30 80 140 / 0.10);
+
+  /* — Radios — */
+  --radius-control: 10px;   /* inputs, botones, chips */
+  --radius-card: 16px;      /* tarjetas */
+  --radius-panel: 22px;     /* paneles y desplegables */
+  --radius-modal: 24px;     /* modales */
+
+  /* — Sombras azuladas y suaves — */
+  --shadow-sm: 0 1px 2px rgb(15 40 90 / 0.06);
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.8) inset, 0 10px 28px -14px rgb(20 60 130 / 0.20);
+  --shadow-float: 0 24px 56px -20px rgb(15 40 90 / 0.32);
+  --glow-primary: 0 0 0 3px rgb(37 99 235 / 0.18);
+
+  /* — Movimiento — */
+  --ease-out: cubic-bezier(0.22, 0.61, 0.36, 1);
+  --dur-fast: 150ms;
+  --dur-base: 220ms;
+  --dur-slow: 400ms;
+
+  /* — Medidas del layout — */
+  --sidebar-w: 264px;
+  --sidebar-w-collapsed: 76px;
+
+  /* — Nombres anteriores (compatibilidad mientras se migran las pantallas) — */
+  --c-paper: var(--c-background);
+  --c-paper-raised: var(--c-surface);
+  --c-ink-dark: var(--c-text);
+
+  /* — Pantallas nuevas (maqueta): en oscuro son los colores exactos del aspecto actual;
+     en claro, su equivalente. Se usan como var(--nc-*) en las clases de src/nuevo/. — */
+  --nc-bg: rgb(243 247 252);
+  --nc-card: rgb(255 255 255);
+  --nc-soft: rgb(11 27 51 / 0.06);
+  --nc-soft2: rgb(11 27 51 / 0.10);
+  --nc-text: rgb(11 27 51);
+  --nc-muted: rgb(91 107 133);
+  --nc-faint: rgb(148 163 184);
+  --nc-border: rgb(210 221 238);
+}
+
+/* El tema oscuro no se aplica al imprimir: el papel es blanco y el texto claro saldría invisible. */
+@media not print {
+:root.dark {
+  --c-primary: 96 165 250;
+  --c-primary-fill: 37 99 235;
+  --c-primary-dark: 147 197 253;
+  --c-primary-light: 30 58 110;
+  --c-navy: 5 11 22;
+  --c-navy-light: 16 34 68;
+  --c-on-navy: 226 236 250;
+
+  --c-background: 6 14 28;
+  --c-surface: 14 26 46;
+  --c-text: 226 236 250;
+  --c-text-muted: 148 168 198;
+  --c-line: 31 51 85;
+
+  --c-success: 52 199 150;
+  --c-success-text: 74 222 172;
+  --c-warning: 245 170 50;
+  --c-warning-text: 251 191 36;
+  --c-danger: 248 113 113;
+  --c-info: 96 165 250;
+
+  --chart-1: 96 165 250;
+  --chart-2: 59 130 246;
+  --chart-3: 147 197 253;
+  --chart-4: 37 99 235;
+  --chart-5: 56 189 248;
+
+  --glass-rgb: 12 24 44;
+  --glass-border: rgb(120 170 255 / 0.18);
+  --glass-highlight: rgb(255 255 255 / 0.07);
+  --card-border: rgb(120 170 255 / 0.12);
+
+  --shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-card: 0 1px 0 rgb(255 255 255 / 0.04) inset, 0 14px 32px -16px rgb(0 0 0 / 0.65);
+  --shadow-float: 0 28px 60px -20px rgb(0 0 0 / 0.75);
+  --glow-primary: 0 0 0 3px rgb(96 165 250 / 0.25);
+
+  --nc-bg: rgb(11 17 32);
+  --nc-card: rgb(30 41 59);
+  --nc-soft: rgb(255 255 255 / 0.10);
+  --nc-soft2: rgb(255 255 255 / 0.16);
+  --nc-text: rgb(255 255 255);
+  --nc-muted: rgb(148 163 184);
+  --nc-faint: rgb(100 116 139);
+  --nc-border: rgb(255 255 255 / 0.10);
+}
+}
+
