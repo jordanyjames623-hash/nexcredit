@@ -182,10 +182,17 @@ export function LoanDetail() {
   const progress = useMemo(() => {
     const rows = installmentsQuery.data ?? []
     const totalDue = rows.reduce((s, r) => s + Number(r.total_due), 0)
-    const totalPaid = rows.reduce((s, r) => s + Number(r.total_paid), 0)
+    const installmentPaid = rows.reduce((s, r) => s + Number(r.total_paid), 0)
+    // Los abonos a capital no se aplican a ninguna cuota (reducen el capital y
+    // recalculan el plan), asi que no estan en total_paid: se suman aparte para
+    // que el Total pagado sea el efectivo total recibido. Solo pagos activos.
+    const principalPaid = (paymentsQuery.data ?? [])
+      .filter((p) => p.status === 'active' && p.payment_type === 'principal')
+      .reduce((s, p) => s + Number(p.total_amount), 0)
+    const totalPaid = installmentPaid + principalPaid
     const percent = totalDue > 0 ? Math.min(100, Math.round((totalPaid / totalDue) * 100)) : 0
     return { totalDue, totalPaid, percent }
-  }, [installmentsQuery.data])
+  }, [installmentsQuery.data, paymentsQuery.data])
 
   if (loanQuery.isLoading) return <p className="text-sm text-content-muted">Cargando…</p>
   if (loanQuery.error || !loanQuery.data) return <p className="text-sm text-danger">Préstamo no encontrado.</p>
