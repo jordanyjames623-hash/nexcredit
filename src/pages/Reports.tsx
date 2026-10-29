@@ -475,14 +475,20 @@ export function Reports() {
                       </dl>
                     </div>
                     <div className="glass-card">
-                      <h2 className="ledger-rule px-5 py-3 text-sm font-semibold text-content">Exposición por producto</h2>
+                      <h2 className="ledger-rule px-5 py-3 text-sm font-semibold text-content">Exposición por componente</h2>
                       <dl className="divide-y divide-line">
-                        {riskQuery.data.por_producto.map((x, i) => (
-                          <div key={i} className="flex justify-between px-5 py-2.5 text-sm">
-                            <dt className="text-content/80">{x.loan_type === 'capital_interest' ? 'Capital + interés' : 'Solo interés'}</dt>
-                            <dd className="money text-content">RD$ {money(x.total_pending)}</dd>
-                          </div>
-                        ))}
+                        <div className="flex justify-between px-5 py-2.5 text-sm">
+                          <dt className="text-content/80">Capital</dt>
+                          <dd className="money text-content">RD$ {money(s.capital.pendiente)}</dd>
+                        </div>
+                        <div className="flex justify-between px-5 py-2.5 text-sm">
+                          <dt className="text-content/80">Interés</dt>
+                          <dd className="money text-content">RD$ {money(s.ingresos.interes_pendiente)}</dd>
+                        </div>
+                        <div className="flex justify-between px-5 py-2.5 text-sm">
+                          <dt className="text-content/80">Mora</dt>
+                          <dd className="money text-content">RD$ {money(s.ingresos.mora_pendiente)}</dd>
+                        </div>
                       </dl>
                     </div>
                   </div>
