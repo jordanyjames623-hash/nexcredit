@@ -2,7 +2,7 @@ import { Link } from 'react-router-dom'
 import { useQuery } from '@tanstack/react-query'
 import { Banknote, Calculator, CreditCard, DollarSign, MessageCircle, Phone, UserPlus } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
-import { useSummary, type CalendarRow } from '@/components/dashboard/shared'
+import { type CalendarRow } from '@/components/dashboard/shared'
 import { money0, initials, avatarColor, telLink, waLink, relDayEs } from './lib'
 import { GreetingHeader } from './GreetingHeader'
 
@@ -32,97 +32,55 @@ type PendingClient = {
   total: number; due_date: string; overdueCount: number
 }
 
+type HomeData = {
+  capital_pendiente: number
+  calendar: CalendarRow[]
+  balances: { loan_id: string; client_id: string; status: string; days_overdue: number }[]
+  clients: { id: string; full_name: string; phone: string | null; whatsapp: string | null }[]
+  overdue: { loan_id: string; number: number; due_date: string; effective_status: string; total_pending: number; total_due: number }[]
+  progress: { loan_id: string; total: number; paid: number }[]
+  payments: { total_amount: number; paid_at: string; status: string }[]
+}
+
 export function Home() {
   const now = new Date()
   const todayIso = localIso(now)
   const weekEndIso = localIso(new Date(now.getTime() + 6 * 86400000))
 
-  const summaryQuery = useSummary('month')
-  const calendarQuery = useQuery({
-    queryKey: ['nuevo_calendar'],
+  // Inicio combinado (2026-10-29): una sola llamada trae calendario, saldos, clientes,
+  // cuotas vencidas, progreso y pagos, más el capital pendiente calculado exactamente
+  // como dashboard_summary (suma de pending_principal). Las 7 consultas anteriores
+  // salían en paralelo pero eran 7 viajes a la base en cada apertura en frío; ahora
+  // es 1. Todo el cálculo derivado debajo queda igual que antes.
+  const homeQuery = useQuery({
+    queryKey: ['nuevo_home_all', todayIso, weekEndIso],
     queryFn: async () => {
-      const { data, error } = await supabase.rpc('collection_calendar', { p_from: todayIso, p_to: weekEndIso })
+      const { data, error } = await supabase.rpc('home_dashboard', { p_from: todayIso, p_to: weekEndIso, p_today: todayIso })
       if (error) throw error
-      return data as CalendarRow[]
-    }
-  })
-  const balancesQuery = useQuery({
-    queryKey: ['nuevo_home_balances'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('loan_balances').select('loan_id, client_id, status, days_overdue')
-      if (error) throw error
-      return data as { loan_id: string; client_id: string; status: string; days_overdue: number }[]
-    }
-  })
-  const clientsQuery = useQuery({
-    queryKey: ['nuevo_home_clients'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('clients').select('id, full_name, phone, whatsapp').is('deleted_at', null)
-      if (error) throw error
-      return data as { id: string; full_name: string; phone: string | null; whatsapp: string | null }[]
-    }
-  })
-  const overdueQuery = useQuery({
-    queryKey: ['nuevo_home_overdue'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('installment_details')
-        .select('loan_id, number, due_date, effective_status, total_pending, total_due')
-        .lt('due_date', todayIso)
-      if (error) throw error
-      return (data ?? []).filter((r: any) => r.effective_status !== 'paid') as {
-        loan_id: string; number: number; due_date: string; effective_status: string; total_pending: number; total_due: number
-      }[]
-    }
-  })
-  const progressQuery = useQuery({
-    queryKey: ['nuevo_home_progress'],
-    queryFn: async () => {
-      const { data, error } = await supabase.from('installment_details').select('loan_id, status')
-      if (error) return null
-      const map = new Map<string, { total: number; paid: number }>()
-      ;(data ?? []).forEach((r: any) => {
-        const e = map.get(r.loan_id) ?? { total: 0, paid: 0 }
-        e.total++
-        if (r.status === 'paid') e.paid++
-        map.set(r.loan_id, e)
-      })
-      return map
-    }
-  })
-  const paymentsQuery = useQuery({
-    queryKey: ['nuevo_home_payments'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('payment_details')
-        .select('total_amount, paid_at, status')
-        .order('paid_at', { ascending: false })
-        .limit(500)
-      if (error) throw error
-      return data as { total_amount: number; paid_at: string; status: string }[]
+      return data as HomeData
     }
   })
 
-  const s = summaryQuery.data
-  const cartera = s ? s.capital.pendiente : 0
-  const balances = balancesQuery.data ?? []
+  const homeData = homeQuery.data ?? null
+  const cartera = homeData?.capital_pendiente ?? 0
+  const balances = homeData?.balances ?? []
   const activos = balances.filter((l) => l.status === 'active').length
   const alDia = balances.filter((l) => l.status === 'active' && l.days_overdue === 0).length
   const atrasados = balances.filter((l) => l.status === 'active' && l.days_overdue > 0).length
   const saldados = balances.filter((l) => l.status === 'paid').length
   const pctDia = alDia + atrasados > 0 ? Math.round((alDia / (alDia + atrasados)) * 100) : 0
-  const clients = clientsQuery.data ?? []
+  const clients = homeData?.clients ?? []
   const clientById = new Map(clients.map((c) => [c.id, c]))
   const loanClient = new Map(balances.map((l) => [l.loan_id, l.client_id]))
-  const progress = progressQuery.data ?? null
+  const progress = new Map((homeData?.progress ?? []).map((r) => [r.loan_id, { total: r.total, paid: r.paid }]))
 
-  const calendarToday = (calendarQuery.data ?? []).filter((r) => r.due_date === todayIso && r.status !== 'paid')
+  const calendarToday = (homeData?.calendar ?? []).filter((r) => r.due_date === todayIso && r.status !== 'paid')
   const todayDueTotal = calendarToday.reduce((sum, r) => sum + Number(r.total_due), 0)
 
   // Una fila por cliente (como en la maqueta): si tiene cuotas vencidas, la fila muestra la
   // vencida mas antigua y cuantas tiene vencidas; si no, su cuota de hoy.
   const overdueByClient = new Map<string, { loan_id: string; number: number; due_date: string; total: number }[]>()
-  ;(overdueQuery.data ?? []).forEach((r) => {
+  ;(homeData?.overdue ?? []).forEach((r) => {
     const cid = loanClient.get(r.loan_id)
     if (!cid) return
     const arr = overdueByClient.get(cid) ?? []
@@ -147,7 +105,7 @@ export function Home() {
     return a.due_date < b.due_date ? -1 : a.due_date > b.due_date ? 1 : 0
   })
 
-  const payments = (paymentsQuery.data ?? []).filter((p) => p.status === 'active')
+  const payments = (homeData?.payments ?? []).filter((p) => p.status === 'active')
   const todayPayments = payments.filter((p) => rdDate(p.paid_at) === todayIso)
   const cobradoHoy = todayPayments.reduce((sum, p) => sum + Number(p.total_amount), 0)
   const dayIdx = (now.getDay() + 6) % 7
@@ -208,8 +166,8 @@ export function Home() {
           <span className="rounded-full bg-red-400/10 px-2.5 py-0.5 text-xs font-semibold text-red-400">{pendingClients.length} pendientes</span>
         </div>
         <p className="mt-1 text-xs text-[var(--nc-muted)]">Toca un botón y resuelve sin cambiar de pantalla.</p>
-        {calendarQuery.isLoading && <p className="mt-3 text-sm text-[var(--nc-muted)]">Cargando…</p>}
-        {!calendarQuery.isLoading && pendingClients.length === 0 && (
+        {homeQuery.isLoading && <p className="mt-3 text-sm text-[var(--nc-muted)]">Cargando…</p>}
+        {!homeQuery.isLoading && pendingClients.length === 0 && (
           <p className="mt-3 text-center text-sm text-[var(--nc-muted)]">Nada por cobrar hoy.</p>
         )}
         <div className="divide-y divide-[var(--nc-border)]">
