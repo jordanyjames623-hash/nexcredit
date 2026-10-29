@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Activity, BarChart3, Bell, Brain, Calendar, ChevronDown, ChevronRight, FileText, HandCoins, LogOut, Percent, Receipt, RefreshCw, Route, Settings, Shield, Sparkles, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { Activity, BarChart3, Brain, Calendar, ChevronDown, ChevronRight, FileText, HandCoins, LogOut, Percent, Receipt, RefreshCw, Route, Settings, Shield, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { GreetingHeader } from './GreetingHeader'
@@ -12,7 +12,7 @@ import { GreetingHeader } from './GreetingHeader'
 // var(--nc-*), asi que el boton claro/oscuro cambia tambien esta pantalla.
 // Nota: no hay pantalla separada de recordatorios (decision 2026-10-27): Recordatorios abre
 // el Calendario (que vence cada dia) y Cobranza sigue en cobranza (atrasados).
-type Row = { icon: LucideIcon; color: string; title: string; sub: string; to?: string; action?: 'intro' | 'logout' }
+type Row = { icon: LucideIcon; color: string; title: string; sub: string; to: string }
 
 const ROWS: Row[] = [
   { icon: Calendar, color: '#3B82F6', title: 'Calendario de cobros', sub: 'Qué vence cada día de la semana', to: '/calendario' },
@@ -21,16 +21,14 @@ const ROWS: Row[] = [
   { icon: RefreshCw, color: '#3B82F6', title: 'Renovaciones', sub: 'Clientes listos para renovar', to: '/renovaciones' },
   { icon: Shield, color: '#EF4444', title: 'Garantías', sub: 'Artículos dejados en garantía', to: '/garantias' },
   { icon: Users, color: '#A855F7', title: 'Colaboradores', sub: 'Tu equipo y sus accesos', to: '/colaboradores' },
-  { icon: Bell, color: '#F59E0B', title: 'Recordatorios', sub: 'Avisos automáticos a clientes', to: '/calendario' },
-  { icon: Settings, color: '#94A3B8', title: 'Configuración', sub: 'Tu negocio, tasas y respaldo', to: '/configuracion' },
-  { icon: Sparkles, color: '#3B82F6', title: 'Ver la intro animada de nuevo', sub: 'Vuelve a ver la presentación', action: 'intro' },
   { icon: Wallet, color: '#22C55E', title: 'Caja', sub: 'Efectivo y movimientos del día', to: '/caja' },
   { icon: HandCoins, color: '#EF4444', title: 'Cobranza', sub: 'Gestión de cobros atrasados', to: '/cobranza' },
   { icon: Route, color: '#3B82F6', title: 'Rutas', sub: 'Rutas de cobro', to: '/rutas' },
   { icon: Receipt, color: '#F97316', title: 'Gastos', sub: 'Gastos del negocio', to: '/gastos' },
   { icon: FileText, color: '#A855F7', title: 'Solicitudes', sub: 'Solicitudes de préstamo', to: '/solicitudes' },
   { icon: Brain, color: '#6366F1', title: 'Inteligencia', sub: 'Análisis inteligente', to: '/inteligencia' },
-  { icon: Activity, color: '#94A3B8', title: 'Actividad', sub: 'Registro de actividad', to: '/actividad' }
+  { icon: Activity, color: '#94A3B8', title: 'Actividad', sub: 'Registro de actividad', to: '/actividad' },
+  { icon: Settings, color: '#94A3B8', title: 'Configuración', sub: 'Tu negocio, tasas y respaldo', to: '/configuracion' }
 ]
 
 export function More() {
@@ -59,15 +57,8 @@ export function More() {
         <ChevronRight size={18} className="shrink-0 text-[var(--nc-faint)]" />
       </span>
     )
-    if (r.action === 'intro') {
-      return (
-        <button key={r.title} onClick={() => window.dispatchEvent(new Event('nc:replay-intro'))} className="w-full rounded-[22px] bg-[var(--nc-card)] p-4 text-left active:scale-[0.99]">
-          {body}
-        </button>
-      )
-    }
     return (
-      <Link key={r.title} to={r.to!} className="block rounded-[22px] bg-[var(--nc-card)] p-4 active:scale-[0.99]">
+      <Link key={r.title} to={r.to} className="block rounded-[22px] bg-[var(--nc-card)] p-4 active:scale-[0.99]">
         {body}
       </Link>
     )
