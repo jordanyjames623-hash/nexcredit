@@ -145,7 +145,18 @@ export function LoanDetail() {
       const { error } = await supabase.from('loans').update({ deleted_at: new Date().toISOString() }).eq('id', id)
       if (error) throw error
     },
-    onSuccess: () => navigate('/prestamos'),
+    // Sin esto la lista mostraba el prestamo borrado hasta refrescar: el borrado solo
+    // navegaba a /prestamos sin invalidar las consultas de la lista nueva (nuevo_loans_*)
+    // ni el inicio combinado, y la cache de 30 s las servia intactas.
+    onSuccess: () => {
+      invalidateAll()
+      qc.invalidateQueries({ queryKey: ['nuevo_loans_balances'] })
+      qc.invalidateQueries({ queryKey: ['nuevo_loans_meta'] })
+      qc.invalidateQueries({ queryKey: ['nuevo_loans_installments'] })
+      qc.invalidateQueries({ queryKey: ['nuevo_loans_saldado_dates'] })
+      qc.invalidateQueries({ queryKey: ['nuevo_home_all'] })
+      navigate('/prestamos')
+    },
     onError: (e: any) => setDeleteError(e.message ?? 'No se pudo eliminar el préstamo.')
   })
 
