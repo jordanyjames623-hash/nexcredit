@@ -113,6 +113,7 @@ export function RegisterPayment() {
   const nextPending = next ? Number(next.total_pending) : 0
 
   const [adv, setAdv] = useState<AdvKey | null>(null)
+  const [advOpen, setAdvOpen] = useState(false)
   const [advAmount, setAdvAmount] = useState('')
   const [advCount, setAdvCount] = useState(2)
   const [notes, setNotes] = useState('')
@@ -265,7 +266,11 @@ export function RegisterPayment() {
           </div>
 
           <div className="rounded-2xl bg-[var(--nc-card)] p-4">
-            <p className="text-sm font-semibold text-[var(--nc-text)]">Opciones avanzadas</p>
+            <button onClick={() => setAdvOpen(!advOpen)} className="flex w-full items-center justify-between text-left">
+              <span className="text-sm font-semibold text-[var(--nc-text)]">Opciones avanzadas{adv !== null && <span className="font-normal text-[var(--nc-muted)]"> · {ADV_LABEL[adv]}</span>}</span>
+              <span className="text-sm text-[var(--nc-muted)]">{advOpen ? '▴' : '▾'}</span>
+            </button>
+            {advOpen && (<>
             <p className="mt-1 text-xs text-[var(--nc-muted)]">El pago normal es la cuota siguiente. Si eliges una opción, el monto y el desglose cambian.</p>
             <div className="mt-3 space-y-2">
               {(['cuota_mora', 'interes', 'parcial', 'capital', 'adelantadas', 'saldar'] as AdvKey[]).map((key) => (
@@ -309,6 +314,7 @@ export function RegisterPayment() {
               <input value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Ej: abono de la quincena"
                 className="mt-1 w-full rounded-lg bg-[var(--nc-soft)] px-3 py-2 text-sm text-[var(--nc-text)]" />
             </div>
+            </>)}
           </div>
 
           {error && <p className="text-sm text-red-400">{error}</p>}
