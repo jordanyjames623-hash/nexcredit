@@ -6,7 +6,7 @@ import { type CalendarRow } from '@/components/dashboard/shared'
 import { money0, initials, avatarColor, telLink, waLink, relDayEs } from './lib'
 import { GreetingHeader } from './GreetingHeader'
 
-// Inicio de la maqueta interactiva: saludo + fecha + campana, tarjeta azul "CAPITAL EN
+// Inicio de la maqueta interactiva: saludo + fecha + campana, tarjeta azul "DINERO EN
 // LA CALLE" con 3 mini-stats, 4 acciones, "Para cobrar hoy" en UNA tarjeta con una fila
 // por cliente (no por cuota) y botones Telefono / WhatsApp / Cobrar a la derecha, grafica
 // de cobros de la semana y dona de salud de la cartera. Los colores salen de var(--nc-*),
@@ -34,6 +34,8 @@ type PendingClient = {
 
 type HomeData = {
   capital_pendiente: number
+  interes_pendiente: number
+  mora_pendiente: number
   calendar: CalendarRow[]
   balances: { loan_id: string; client_id: string; status: string; days_overdue: number }[]
   clients: { id: string; full_name: string; phone: string | null; whatsapp: string | null }[]
@@ -48,10 +50,10 @@ export function Home() {
   const weekEndIso = localIso(new Date(now.getTime() + 6 * 86400000))
 
   // Inicio combinado (2026-10-29): una sola llamada trae calendario, saldos, clientes,
-  // cuotas vencidas, progreso y pagos, más el capital pendiente calculado exactamente
-  // como dashboard_summary (suma de pending_principal). Las 7 consultas anteriores
-  // salían en paralelo pero eran 7 viajes a la base en cada apertura en frío; ahora
-  // es 1. Todo el cálculo derivado debajo queda igual que antes.
+  // cuotas vencidas, progreso y pagos, más el capital, el interés y la mora pendientes
+  // calculados exactamente como dashboard_summary (sumas en loan_balances). Las 7
+  // consultas anteriores salían en paralelo pero eran 7 viajes a la base en cada
+  // apertura en frío; ahora es 1. Todo el cálculo derivado debajo queda igual que antes.
   const homeQuery = useQuery({
     queryKey: ['nuevo_home_all', todayIso, weekEndIso],
     queryFn: async () => {
@@ -63,6 +65,11 @@ export function Home() {
 
   const homeData = homeQuery.data ?? null
   const cartera = homeData?.capital_pendiente ?? 0
+  // Dinero en la calle (2026-10-30): el total a recoger es capital + interés + mora
+  // pendientes, los tres de loan_balances (igual que Reportes y Cobranza).
+  const interes = homeData?.interes_pendiente ?? 0
+  const mora = homeData?.mora_pendiente ?? 0
+  const dineroCalle = cartera + interes + mora
   const balances = homeData?.balances ?? []
   const activos = balances.filter((l) => l.status === 'active').length
   const alDia = balances.filter((l) => l.status === 'active' && l.days_overdue === 0).length
@@ -128,8 +135,9 @@ export function Home() {
       <div className="relative overflow-hidden rounded-[20px] bg-gradient-to-br from-[#2563EB] to-[#3B82F6] p-4 shadow-sm">
         <span className="pointer-events-none absolute -right-2 top-1/2 -translate-y-1/2 select-none text-[120px] font-bold leading-none text-white/10" aria-hidden="true">$</span>
         <div className="relative">
-          <p className="text-xs font-semibold uppercase tracking-wider text-white/80">Capital en la calle</p>
-          <p className="font-disp mt-1 text-3xl font-bold text-white">RD$ {money0(cartera)}</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-white/80">Dinero en la calle</p>
+          <p className="font-disp mt-1 text-3xl font-bold text-white">RD$ {money0(dineroCalle)}</p>
+          <p className="mt-1 text-xs text-white/70">Capital RD$ {money0(cartera)} · Interés RD$ {money0(interes)} · Mora RD$ {money0(mora)}</p>
           <p className="mt-1 text-sm text-white/80">En {activos} préstamos activos de {clients.length} clientes. Así va tu negocio hoy:</p>
           <div className="mt-3 grid grid-cols-3 gap-2">
             <div className="rounded-xl bg-white/10 p-2">
