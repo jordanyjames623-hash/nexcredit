@@ -1,9 +1,8 @@
-import { useEffect, useState, type ChangeEvent } from 'react'
+import { useState, type ChangeEvent } from 'react'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { money0 } from './lib'
-import { printElement, removePrintFrames } from '@/lib/printElement'
 import { GreetingHeader } from './GreetingHeader'
 
 // Contratos: crear (legal o informal, con el texto generado en pantalla antes de
@@ -21,6 +20,10 @@ type Terms = { monto: number; tasa: number; plazo: number; frecuencia: string }
 
 const FREQ_LABEL: Record<string, string> = { weekly: 'semanal', biweekly: 'quincenal', monthly: 'mensual' }
 const TYPE_LABEL: Record<string, string> = { legal: 'Legal', informal: 'Informal' }
+
+function escapeHtml(s: string) {
+  return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
+}
 
 function fechaHoy() {
   return new Date().toLocaleDateString('es-DO')
@@ -96,9 +99,6 @@ export function Contracts() {
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [uploadingId, setUploadingId] = useState<string | null>(null)
   const [actionError, setActionError] = useState<string | null>(null)
-
-  // Al cerrar la pantalla se descartan los documentos de impresion pendientes.
-  useEffect(() => removePrintFrames, [])
 
   const contractsQuery = useQuery({
     queryKey: ['nuevo_contracts'],
@@ -218,10 +218,14 @@ export function Contracts() {
     qc.invalidateQueries({ queryKey: ['nuevo_contracts'] })
   }
 
-  async function printContract(c: ContractRow) {
-    const el = document.getElementById(`contract-body-${c.id}`)
-    if (!el) return
-    try { await printElement(el) } catch { window.print() }
+  // Imprimir ya NO usa el iframe de impresion: en el celular no hacia nada visible.
+  // Ahora abre el contrato en una pestana nueva como documento imprimible, con su
+  // propio boton Imprimir (el dialogo lo abre el navegador de esa pestana).
+  function printContract(c: ContractRow, clientName: string) {
+    const doc = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Contrato - ${escapeHtml(clientName)}</title><style>body{font-family:Georgia,serif;color:#000;background:#fff;margin:24px}pre{white-space:pre-wrap;font-family:Georgia,serif;font-size:14px;line-height:1.5}@media print{.print-btn{display:none}}</style></head><body><button class="print-btn" onclick="window.print()">Imprimir / PDF</button><pre>${escapeHtml(c.body)}</pre><script>window.print()</script></body></html>`
+    const blob = new Blob([doc], { type: 'text/html' })
+    const url = URL.createObjectURL(blob)
+    window.open(url, '_blank')
   }
 
   const field = 'w-full rounded-xl bg-[var(--nc-soft)] px-4 py-3 text-sm text-[var(--nc-text)] outline-none placeholder:text-[var(--nc-faint)] focus:ring-2 focus:ring-[#2563EB]'
@@ -325,7 +329,7 @@ export function Contracts() {
                   <div id={`contract-body-${c.id}`} className="whitespace-pre-wrap rounded-xl bg-[var(--nc-soft)] px-3 py-2 text-xs text-[var(--nc-text)]">
                     {c.body}
                   </div>
-                  <button onClick={() => printContract(c)} className="block w-full rounded-xl bg-[var(--nc-soft)] py-2.5 text-sm font-medium text-[var(--nc-text)]">Imprimir / PDF</button>
+                  <button onClick={() => printContract(c, client?.full_name ?? 'Cliente')} className="block w-full rounded-xl bg-[var(--nc-soft)] py-2.5 text-sm font-medium text-[var(--nc-text)]">Imprimir / PDF</button>
                 </div>
               )}
 
