@@ -23,6 +23,30 @@ export function Renewals() {
     }
   })
 
+  // Porcentaje por cuotas, no por monto (decision JC 2026-10-29): la vista trae el
+  // porcentaje por monto, asi que las cuotas se cuentan aparte desde installments.
+  const candidateIds = (data ?? []).map((c) => c.loan_id)
+  const countsQuery = useQuery({
+    queryKey: ['renewal-counts', candidateIds.join(',')],
+    enabled: candidateIds.length > 0,
+    queryFn: async () => {
+      const { data: rows, error } = await supabase.from('installment_details').select('loan_id, effective_status').in('loan_id', candidateIds)
+      if (error) throw error
+      const map = new Map<string, { total: number; paid: number }>()
+      ;(rows ?? []).forEach((r: any) => {
+        const e = map.get(r.loan_id) ?? { total: 0, paid: 0 }
+        e.total++
+        if (r.effective_status === 'paid') e.paid++
+        map.set(r.loan_id, e)
+      })
+      return map
+    }
+  })
+  const pctByLoan = new Map<string, string>()
+  countsQuery.data?.forEach((v, k) => {
+    if (v.total > 0) pctByLoan.set(k, `${Math.round((v.paid / v.total) * 100)}%`)
+  })
+
   const markInterest = useMutation({
     mutationFn: async (loanId: string) => {
       const { error } = await supabase.rpc('mark_renewal_interest', { p_loan_id: loanId })
@@ -58,7 +82,7 @@ export function Renewals() {
                   {c.client_name} <span className="text-content-muted">· #{c.loan_number}</span>
                 </Link>
                 <p className="text-xs text-content-muted">
-                  {c.percent_paid}% pagado · RD$ {money(c.total_paid)} de RD$ {money(c.total_due)}
+                  {pctByLoan.get(c.loan_id) ?? '…'} pagado · RD$ {money(c.total_paid)} de RD$ {money(c.total_due)}
                 </p>
               </div>
             </div>

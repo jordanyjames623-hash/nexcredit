@@ -182,14 +182,13 @@ export function LoanDetail() {
   const progress = useMemo(() => {
     const rows = installmentsQuery.data ?? []
     const totalDue = rows.reduce((s, r) => s + Number(r.total_due), 0)
-    const installmentPaid = rows.reduce((s, r) => s + Number(r.total_paid), 0)
-    // Los abonos a capital no se aplican a ninguna cuota (reducen el capital y
-    // recalculan el plan), asi que no estan en total_paid: se suman aparte para
-    // que el Total pagado sea el efectivo total recibido. Solo pagos activos.
-    const principalPaid = (paymentsQuery.data ?? [])
-      .filter((p) => p.status === 'active' && p.payment_type === 'principal')
+    // Total pagado = efectivo total recibido (pagos activos). No se calcula desde
+    // las cuotas: un abono a capital que cae en una cuota ya iniciada ya esta en
+    // total_paid de esa cuota (sumarlo aparte lo cuenta dos veces), y el que va a
+    // cuotas futuras no esta en ninguna cuota (no sumarlo lo deja fuera).
+    const totalPaid = (paymentsQuery.data ?? [])
+      .filter((p) => p.status === 'active')
       .reduce((s, p) => s + Number(p.total_amount), 0)
-    const totalPaid = installmentPaid + principalPaid
     const percent = totalDue > 0 ? Math.min(100, Math.round((totalPaid / totalDue) * 100)) : 0
     return { totalDue, totalPaid, percent }
   }, [installmentsQuery.data, paymentsQuery.data])

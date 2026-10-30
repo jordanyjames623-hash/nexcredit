@@ -16,17 +16,26 @@ const RANGE_OPTIONS = [
 const STATUS_LABEL: Record<string, string> = { paid: 'Pagada', overdue: 'Vencida', partial: 'Parcial', pending: 'Pendiente' }
 const STATUS_BADGE: Record<string, string> = { paid: 'badge-success', overdue: 'badge-danger', partial: 'badge-warning', pending: 'badge-neutral' }
 
+// Fecha en hora de RD, no UTC: con toISOString, despues de las 8 p. m. en RD el
+// 'hoy' saltaba al dia siguiente y el resumen de hoy salia en 0.
+function rdIso(d: Date) {
+  return d.toLocaleDateString('en-CA', { timeZone: 'America/Santo_Domingo' })
+}
+function addDaysIso(iso: string, n: number) {
+  const d = new Date(`${iso}T12:00:00Z`)
+  d.setUTCDate(d.getUTCDate() + n)
+  return d.toISOString().slice(0, 10)
+}
+
 export function CollectionCalendar() {
   const [days, setDays] = useState(14)
-  const todayIso = new Date().toISOString().slice(0, 10)
+  const todayIso = rdIso(new Date())
 
   const { data, isLoading, error } = useQuery({
     queryKey: ['collection-calendar', days],
     queryFn: async () => {
-      const from = new Date(); from.setDate(from.getDate() - 3)
-      const to = new Date(); to.setDate(to.getDate() + days)
       const { data, error } = await supabase.rpc('collection_calendar', {
-        p_from: from.toISOString().slice(0, 10), p_to: to.toISOString().slice(0, 10)
+        p_from: addDaysIso(todayIso, -3), p_to: addDaysIso(todayIso, days)
       })
       if (error) throw error
       return data as Row[]
