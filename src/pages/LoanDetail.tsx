@@ -260,7 +260,7 @@ export function LoanDetail() {
         {loan.status === 'active' && (
           <>
             <div className="mt-5 flex flex-wrap gap-2">
-              <button onClick={() => setShowPayForm(true)} className="btn-solid w-full sm:w-auto">
+              <button onClick={() => navigate(`/registrar-pago/${loan.id}`)} className="btn-solid w-full sm:w-auto">
                 <HandCoins size={16} className="mr-1.5" /> Registrar pago
               </button>
               {(paymentsQuery.data?.length ?? 0) === 0 && (
@@ -269,7 +269,6 @@ export function LoanDetail() {
                 </button>
               )}
             </div>
-            {!isOnline && <p className="mt-2 text-xs text-content-muted">Sin conexión — el pago se guarda en este dispositivo y se envía solo al recuperar señal.</p>}
           </>
         )}
       </div>

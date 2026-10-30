@@ -221,6 +221,7 @@ export function RegisterPayment() {
             <p className="mt-3 text-lg font-bold text-[var(--nc-text)]">Pago registrado</p>
             <p className="text-sm text-[var(--nc-muted)]">Recibo #{receipt} generado</p>
             {paidLabel && <p className="text-sm text-[var(--nc-muted)]">{paidLabel}</p>}
+            <p className="text-sm text-[var(--nc-muted)]">Desglose: mora RD$ {money0(preview.mora)} · interés RD$ {money0(preview.interes)} · capital RD$ {money0(preview.capital)}</p>
             {settled && <p className="mt-1 text-sm font-semibold text-green-500">Préstamo saldado</p>}
           </div>
           <button
@@ -251,6 +252,7 @@ export function RegisterPayment() {
             <p className="text-xs text-[var(--nc-muted)]">Monto a pagar</p>
             <p className="font-disp mt-1 text-3xl font-bold text-[var(--nc-text)]">RD$ {money0(payTotal)}</p>
             {adv !== null && <p className="mt-1 text-xs text-[var(--nc-muted)]">{ADV_LABEL[adv]}</p>}
+            <p className="mt-2 text-xs text-[var(--nc-muted)]">Desglose: mora RD$ {money0(preview.mora)} · interés RD$ {money0(preview.interes)} · capital RD$ {money0(preview.capital)}</p>
           </div>
 
           <div>
