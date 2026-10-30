@@ -17,6 +17,7 @@ import { Calculator } from './Calculator'
 import { NewLoanSimple } from './NewLoanSimple'
 import { NewClient } from './NewClient'
 import { More } from './More'
+import { Contracts } from './Contracts'
 
 // Las pantallas de la maqueta (tema oscuro) + entrar/registro. Las funciones actuales que
 // no estan en la maqueta viven en Mas y se reutilizan tal cual de la app anterior (mismo
@@ -62,6 +63,7 @@ export default function NuevoApp() {
           <Route path="/calculadora" element={<Calculator />} />
           <Route path="/configuracion" element={<Settings />} />
           <Route path="/mas" element={<More />} />
+          <Route path="/contratos" element={<Contracts />} />
           <Route path="/clientes/:id" element={<ClientDetail />} />
           <Route path="/prestamos/:id" element={<LoanDetail />} />
           <Route path="/caja" element={<CashRegister />} />

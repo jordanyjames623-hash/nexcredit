@@ -28,6 +28,7 @@ const ROWS: Row[] = [
   { icon: FileText, color: '#A855F7', title: 'Solicitudes', sub: 'Solicitudes de préstamo', to: '/solicitudes' },
   { icon: Brain, color: '#6366F1', title: 'Inteligencia', sub: 'Análisis inteligente', to: '/inteligencia' },
   { icon: Activity, color: '#94A3B8', title: 'Actividad', sub: 'Registro de actividad', to: '/actividad' },
+  { icon: FileText, color: '#0EA5E9', title: 'Contratos', sub: 'Legales e informales, firmados y por firmar', to: '/contratos' },
   { icon: Settings, color: '#94A3B8', title: 'Configuración', sub: 'Tu negocio, tasas y respaldo', to: '/configuracion' }
 ]
 
