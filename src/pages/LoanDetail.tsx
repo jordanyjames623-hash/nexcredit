@@ -1,7 +1,7 @@
 import { useMemo, useState, type FormEvent, type ChangeEvent } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
 import { useQuery, useQueryClient, useMutation } from '@tanstack/react-query'
-import { ArrowLeft, HandCoins, Trash2, History } from 'lucide-react'
+import { ArrowLeft, HandCoins, Pencil, Trash2, History } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useToast } from '@/components/ui/Toast'
 import { Modal } from '@/components/ui/Modal'
@@ -16,6 +16,8 @@ type LoanRow = {
   id: string; client_id: string; loan_number: number; status: string; loan_type: string
   principal: number; current_principal: number; interest_rate: number; frequency: string
   term_installments: number | null; start_date: string; first_payment_date: string; notes: string | null
+  rate_basis: string; amortization_method: string | null
+  grace_days: number; late_fee_type: string; late_fee_value: number
   has_collateral: boolean; collateral_description: string | null; collateral_value: number | null; collateral_image_path: string | null
 }
 type InstallmentRow = {
@@ -57,6 +59,7 @@ export function LoanDetail() {
   const [tab, setTab] = useState<(typeof TABS)[number]>('cuotas')
   const [showPayForm, setShowPayForm] = useState(false)
   const [showMarkOld, setShowMarkOld] = useState(false)
+  const [showEdit, setShowEdit] = useState(false)
   const [receipt, setReceipt] = useState<ReceiptData | null>(null)
 
   function canVoid(p: PaymentRow) {
@@ -263,6 +266,11 @@ export function LoanDetail() {
               <button onClick={() => navigate(`/registrar-pago/${loan.id}`)} className="btn-solid w-full sm:w-auto">
                 <HandCoins size={16} className="mr-1.5" /> Registrar pago
               </button>
+              {isOwner && (
+                <button onClick={() => setShowEdit(true)} className="btn-secondary w-full sm:w-auto">
+                  <Pencil size={16} className="mr-1.5" /> Editar préstamo
+                </button>
+              )}
               {(paymentsQuery.data?.length ?? 0) === 0 && (
                 <button onClick={() => setShowMarkOld(true)} className="btn-secondary w-full sm:w-auto">
                   <History size={16} className="mr-1.5" /> Marcar cuotas ya pagadas
@@ -389,6 +397,14 @@ export function LoanDetail() {
           installments={(installmentsQuery.data ?? []).filter((i) => i.effective_status !== 'paid')}
           onClose={() => setShowMarkOld(false)}
           onDone={() => { invalidateAll(); setShowMarkOld(false) }}
+        />
+      )}
+
+      {showEdit && (
+        <EditLoanModal
+          loan={loan}
+          onClose={() => setShowEdit(false)}
+          onSaved={() => { invalidateAll(); setShowEdit(false) }}
         />
       )}
 
@@ -543,6 +559,145 @@ function CollateralEditor({ loan, onSaved }: { loan: LoanRow; onSaved: () => voi
         <button onClick={() => setEditing(false)} className="text-sm text-content-muted">Cancelar</button>
       </div>
     </div>
+  )
+}
+
+// Editar prestamo (solo dueno, solo prestamos activos): terminos y datos en un solo
+// guardado. Los terminos van por la RPC update_loan_terms (ver MIGRACION-EDITAR-PRESTAMO.sql):
+// sin pagos reconstruye todas las cuotas; con pagos solo reconstruye las futuras sin
+// nada pagado (las pagadas o iniciadas no se tocan). Los datos (notas, mora, gracia) se
+// guardan con un UPDATE directo del dueno (la mora y la gracia las protege el trigger
+// guard_sensitive_update para no-duenos). El metodo de amortizacion y la base de la tasa
+// NO se editan: se mandan los valores actuales y la reconstruccion los reusa.
+const LATE_LABEL_EDIT: Record<string, string> = { none: 'Sin mora', fixed: 'Monto fijo', percent: 'Porcentaje', per_day: 'Por día', per_period: 'Por período' }
+
+function EditLoanModal({ loan, onClose, onSaved }: {
+  loan: LoanRow
+  onClose: () => void
+  onSaved: () => void
+}) {
+  const isCapital = loan.loan_type === 'capital_interest'
+  const [principal, setPrincipal] = useState(String(loan.principal))
+  const [interestRate, setInterestRate] = useState(String(loan.interest_rate))
+  const [termInstallments, setTermInstallments] = useState(loan.term_installments ? String(loan.term_installments) : '')
+  const [frequency, setFrequency] = useState(loan.frequency)
+  const [notes, setNotes] = useState(loan.notes ?? '')
+  const [lateFeeType, setLateFeeType] = useState(loan.late_fee_type ?? 'none')
+  const [lateFeeValue, setLateFeeValue] = useState(loan.late_fee_value ? String(loan.late_fee_value) : '')
+  const [graceDays, setGraceDays] = useState(loan.grace_days ? String(loan.grace_days) : '')
+  const [error, setError] = useState<string | null>(null)
+  const toast = useToast()
+
+  const termsChanged = Number(principal) !== Number(loan.principal)
+    || Number(interestRate) !== Number(loan.interest_rate)
+    || (isCapital && Number(termInstallments) !== Number(loan.term_installments))
+    || frequency !== loan.frequency
+  const dataChanged = (notes.trim() || null) !== (loan.notes ?? null)
+    || lateFeeType !== (loan.late_fee_type ?? 'none')
+    || Number(lateFeeValue || 0) !== Number(loan.late_fee_value || 0)
+    || Number(graceDays || 0) !== Number(loan.grace_days || 0)
+
+  const mutation = useMutation({
+    mutationFn: async () => {
+      if (termsChanged) {
+        const { error } = await supabase.rpc('update_loan_terms', {
+          p_loan_id: loan.id,
+          p_principal: Number(principal),
+          p_interest_rate: Number(interestRate),
+          p_rate_basis: loan.rate_basis,
+          p_amortization_method: loan.amortization_method,
+          p_frequency: frequency,
+          p_term_installments: isCapital ? Number(termInstallments) : null,
+          p_start_date: loan.start_date,
+          p_first_payment_date: loan.first_payment_date
+        })
+        if (error) throw error
+      }
+      if (dataChanged) {
+        const { error: dataError } = await supabase.from('loans').update({
+          notes: notes.trim() || null,
+          late_fee_type: lateFeeType,
+          late_fee_value: Number(lateFeeValue || 0),
+          grace_days: Number(graceDays || 0)
+        }).eq('id', loan.id)
+        if (dataError) throw dataError
+      }
+    },
+    onSuccess: () => { toast.success('Préstamo actualizado'); onSaved() },
+    onError: (e: any) => setError(e.message ?? 'No se pudo guardar los cambios.')
+  })
+
+  function handleSubmit(e: FormEvent) {
+    e.preventDefault()
+    setError(null)
+    if (!principal || Number(principal) <= 0) { setError('Escribe un monto mayor que cero.'); return }
+    if (interestRate === '' || Number.isNaN(Number(interestRate)) || Number(interestRate) < 0 || Number(interestRate) > 100) { setError('Escribe una tasa entre 0 y 100.'); return }
+    if (isCapital && (!termInstallments || Number(termInstallments) < 1)) { setError('Escribe el número de cuotas.'); return }
+    if (Number(lateFeeValue || 0) < 0) { setError('El valor de la mora no puede ser negativo.'); return }
+    if (Number(graceDays || 0) < 0) { setError('Los días de gracia no pueden ser negativos.'); return }
+    mutation.mutate()
+  }
+
+  return (
+    <Modal title="Editar préstamo" subtitle={`PR-${String(loan.loan_number).padStart(4, '0')}`} onClose={onClose}>
+      <form onSubmit={handleSubmit} className="space-y-4">
+        {error && <p className="rounded bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{error}</p>}
+        <div>
+          <p className="mb-2 text-sm font-semibold text-content">Términos</p>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="field-label" htmlFor="el-monto">Capital (RD$)</label>
+              <input id="el-monto" type="number" min="0.01" step="0.01" required className="field-input money" value={principal} onChange={(e) => setPrincipal(e.target.value)} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="el-tasa">Tasa de interés (%)</label>
+              <input id="el-tasa" type="number" min="0" max="100" step="0.01" required className="field-input money" value={interestRate} onChange={(e) => setInterestRate(e.target.value)} />
+            </div>
+            {isCapital && (
+              <div>
+                <label className="field-label" htmlFor="el-cuotas">Número de cuotas</label>
+                <input id="el-cuotas" type="number" min="1" required className="field-input" value={termInstallments} onChange={(e) => setTermInstallments(e.target.value)} />
+              </div>
+            )}
+            <div>
+              <label className="field-label" htmlFor="el-freq">Frecuencia de pago</label>
+              <select id="el-freq" className="field-input" value={frequency} onChange={(e) => setFrequency(e.target.value)}>
+                {Object.entries(FREQ_LABEL).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </div>
+          </div>
+          {termsChanged && (
+            <p className="mt-2 text-xs text-content-muted">Las cuotas pendientes se recalculan con los nuevos términos. Las cuotas ya pagadas no cambian.</p>
+          )}
+        </div>
+        <div>
+          <p className="mb-2 text-sm font-semibold text-content">Datos</p>
+          <div className="grid gap-3 sm:grid-cols-3">
+            <div>
+              <label className="field-label" htmlFor="el-mora-tipo">Mora</label>
+              <select id="el-mora-tipo" className="field-input" value={lateFeeType} onChange={(e) => setLateFeeType(e.target.value)}>
+                {Object.entries(LATE_LABEL_EDIT).map(([v, l]) => <option key={v} value={v}>{l}</option>)}
+              </select>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="el-mora-valor">Valor de mora</label>
+              <input id="el-mora-valor" type="number" min="0" step="0.01" disabled={lateFeeType === 'none'} className="field-input money" value={lateFeeValue} onChange={(e) => setLateFeeValue(e.target.value)} />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="el-gracia">Días de gracia</label>
+              <input id="el-gracia" type="number" min="0" className="field-input" value={graceDays} onChange={(e) => setGraceDays(e.target.value)} />
+            </div>
+          </div>
+          <div className="mt-3">
+            <label className="field-label" htmlFor="el-notas">Notas</label>
+            <input id="el-notas" className="field-input" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          </div>
+        </div>
+        <button type="submit" disabled={mutation.isPending || (!termsChanged && !dataChanged)} className="btn-solid w-full disabled:opacity-50">
+          {mutation.isPending ? 'Guardando…' : 'Guardar cambios'}
+        </button>
+      </form>
+    </Modal>
   )
 }
 
