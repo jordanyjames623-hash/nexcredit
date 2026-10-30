@@ -59,7 +59,6 @@ EL PRESTAMISTA: ___________________________
 
 
 EL PRESTATARIO: ___________________________`}
-}
 
 function buildInformalBody(b: BusinessInfo, c: ClientRow, t: Terms, fecha: string) {
   const cedula = c.document_id ? `, cédula ${c.document_id}` : ''
@@ -79,7 +78,6 @@ EL PRESTAMISTA: ___________________________
 
 
 EL PRESTATARIO: ___________________________`}
-}
 
 export function Contracts() {
   const { business } = useAuth()
