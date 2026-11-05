@@ -200,8 +200,10 @@ export function LoanDetail() {
     // las cuotas: un abono a capital que cae en una cuota ya iniciada ya esta en
     // total_paid de esa cuota (sumarlo aparte lo cuenta dos veces), y el que va a
     // cuotas futuras no esta en ninguna cuota (no sumarlo lo deja fuera).
+    // Los pagos de solo intereses NO cuentan: son una prorroga (extienden el
+    // prestamo un periodo), no un abono; no avanzan el prestamo ni su progreso.
     const totalPaid = (paymentsQuery.data ?? [])
-      .filter((p) => p.status === 'active')
+      .filter((p) => p.status === 'active' && p.payment_type !== 'interest')
       .reduce((s, p) => s + Number(p.total_amount), 0)
     const percent = totalDue > 0 ? Math.min(100, Math.round((totalPaid / totalDue) * 100)) : 0
     return { totalDue, totalPaid, percent }

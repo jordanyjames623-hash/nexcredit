@@ -158,7 +158,7 @@ export function RegisterPayment() {
     : walkRegular(unpaid, payTotal)
   const advEffect = adv === null ? ''
     : adv === 'cuota_mora' ? `Cuota ${next?.number} completa, mora incluida.`
-    : adv === 'interes' ? 'La cuota sigue pendiente: solo se cubren intereses.'
+    : adv === 'interes' ? `La cuota ${next?.number} se mueve un periodo: el prestamo queda al dia y se extiende. No se descuenta capital ni interes, ni suma progreso.`
     : adv === 'parcial' ? 'Se aplica mora, luego interes y luego capital.'
     : adv === 'capital' ? `El capital baja a RD$ ${money0(currentPrincipal - payTotal)}. Las cuotas futuras se recalculan.`
     : adv === 'adelantadas' ? `Se pagan las cuotas ${unpaid[0]?.number} a ${advCount > 0 ? unpaid[Math.min(advCount, unpaid.length) - 1]?.number : '—'}.`
