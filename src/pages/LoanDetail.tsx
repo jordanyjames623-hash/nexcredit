@@ -129,11 +129,22 @@ export function LoanDetail() {
     setLoadingReceiptId(paymentId)
     const { data, error } = await supabase
       .from('payment_details')
-      .select('receipt_number, payment_type, paid_at, principal_amount, interest_amount, late_fee_amount, total_amount, pending_principal_after, next_due_date, next_installment_amount, status')
+      .select('receipt_number, payment_type, paid_at, principal_amount, interest_amount, late_fee_amount, total_amount, pending_principal_after, next_due_date, next_installment_amount, status, payment_method')
       .eq('id', paymentId)
       .single()
+    let enriched = data as ReceiptData | null
+    if (!error && data) {
+      // La cuota que cubrió el pago: payments.installment_id + las cuotas ya cargadas.
+      try {
+        const { data: pay } = await supabase.from('payments').select('installment_id').eq('id', paymentId).single()
+        const instId = (pay as { installment_id?: string | null } | null)?.installment_id ?? null
+        const rows = installmentsQuery.data ?? []
+        const row = instId ? rows.find((r) => r.installment_id === instId) : undefined
+        if (row) enriched = { ...data, installment_number: row.number, installment_total: rows.length } as ReceiptData
+      } catch { /* sin cuota: el recibo igual abre */ }
+    }
     setLoadingReceiptId(null)
-    if (!error && data) setReceipt(data as ReceiptData)
+    if (enriched) setReceipt(enriched)
   }
 
   function invalidateAll() {

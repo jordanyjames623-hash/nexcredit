@@ -1,9 +1,8 @@
 import { Portal } from '@/components/ui/Portal'
-import { useEffect } from 'react'
-import { printElement, removePrintFrames } from '@/lib/printElement'
 import { Printer, Share2, X } from 'lucide-react'
 import { useAuth } from '@/contexts/AuthContext'
 import { money, shortDate, dateTime, PAYMENT_METHOD_LABEL } from '@/lib/format'
+import { openReceiptPrintTab, shareReceipt, type ReceiptDocInput } from '@/lib/receiptDoc'
 
 const TYPE_LABEL: Record<string, string> = {
   regular: 'Cuota regular', principal: 'Abono a capital', interest: 'Interés', late_fee: 'Mora', custom: 'Personalizado'
@@ -14,6 +13,7 @@ export type ReceiptData = {
   principal_amount: number; interest_amount: number; late_fee_amount: number; total_amount: number
   pending_principal_after: number | null; next_due_date: string | null; next_installment_amount: number | null
   payment_method?: string
+  installment_number?: number | null; installment_total?: number | null
 }
 
 export function Receipt({ payment, clientName, loanNumber, onClose }: {
@@ -23,30 +23,32 @@ export function Receipt({ payment, clientName, loanNumber, onClose }: {
   const { date, time } = dateTime(payment.paid_at)
   const voided = payment.status === 'voided'
 
-  async function share() {
-    const text = `Recibo #${payment.receipt_number} — ${business?.name ?? 'NEXCREDIT'}${voided ? ' — ANULADO' : ''}\n` +
-      `Cliente: ${clientName}\nPréstamo #${loanNumber}\n` +
-      `Total pagado: RD$ ${money(payment.total_amount)}\nFecha: ${date}${time ? ` ${time}` : ''}`
-    if (navigator.share) {
-      try { await navigator.share({ title: 'Comprobante de pago', text }) } catch { /* el usuario canceló */ }
-    } else {
-      await navigator.clipboard.writeText(text)
-      window.alert('Comprobante copiado al portapapeles.')
+  function docInput(): ReceiptDocInput {
+    return {
+      payment,
+      businessName: business?.name ?? 'NEXCREDIT',
+      ownerName: business?.owner_name,
+      phone: business?.phone,
+      whatsapp: business?.whatsapp,
+      address: business?.address,
+      rnc: business?.rnc,
+      footer: business?.receipt_footer,
+      logoUrl: business?.logo_url,
+      clientName,
+      loanNumber
     }
   }
 
-  // Al cerrar el comprobante se descarta el documento oculto de impresión.
-  useEffect(() => removePrintFrames, [])
+  // Compartir como PDF real: WhatsApp lo recibe como documento. Si el navegador no
+  // acepta archivos, cae al texto de siempre (ver receiptDoc).
+  async function share() {
+    await shareReceipt(docInput())
+  }
 
-  async function print() {
-    // Se imprime en un documento aislado; si el navegador no lo permite, se imprime la página como respaldo.
-    try {
-      const el = document.getElementById('receipt-content')
-      if (!el) throw new Error('sin comprobante')
-      await printElement(el)
-    } catch {
-      window.print()
-    }
+  // Imprimir abre el recibo en una pestaña nueva imprimible: el iframe oculto no
+  // abría el diálogo en el celular (mismo arreglo que Contratos).
+  function print() {
+    if (!openReceiptPrintTab(docInput())) window.print()
   }
 
   return (
@@ -93,6 +95,9 @@ export function Receipt({ payment, clientName, loanNumber, onClose }: {
           <p className="pt-3 text-sm text-content"><span className="text-content-muted">Cliente:</span> {clientName}</p>
           <p className="text-sm text-content"><span className="text-content-muted">Préstamo:</span> PR-{String(loanNumber).padStart(4, '0')}</p>
           <p className="text-sm text-content"><span className="text-content-muted">Tipo:</span> {TYPE_LABEL[payment.payment_type] ?? payment.payment_type}</p>
+          {payment.installment_number != null && payment.installment_total != null && (
+            <p className="text-sm text-content"><span className="text-content-muted">Cuota:</span> {payment.installment_number} de {payment.installment_total}</p>
+          )}
           {payment.payment_method && <p className="mb-3 text-sm text-content"><span className="text-content-muted">Método:</span> {PAYMENT_METHOD_LABEL[payment.payment_method] ?? payment.payment_method}</p>}
 
           <dl className="ledger-rule space-y-1.5 border-t py-3 text-sm">

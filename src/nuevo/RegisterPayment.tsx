@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { Check } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { money0, initials, avatarColor } from './lib'
-import { PAYMENT_METHOD_LABEL } from '@/lib/format'
+import { useAuth } from '@/contexts/AuthContext'
+import { shareReceipt } from '@/lib/receiptDoc'
 
 // Registrar pago de la maqueta: tarjeta del cliente, monto de la siguiente cuota sin
 // pagar, pildoras de metodo y Confirmar pago. Al confirmar, el formulario se reemplaza
@@ -61,6 +62,7 @@ function walkRegular(unpaid: InstRow[], amount: number) {
 
 export function RegisterPayment() {
   const { loanId } = useParams()
+  const { business } = useAuth()
   const [method, setMethod] = useState('cash')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -159,7 +161,7 @@ export function RegisterPayment() {
     : adv === 'interes' ? 'La cuota sigue pendiente: solo se cubren intereses.'
     : adv === 'parcial' ? 'Se aplica mora, luego interes y luego capital.'
     : adv === 'capital' ? `El capital baja a RD$ ${money0(currentPrincipal - payTotal)}. Las cuotas futuras se recalculan.`
-    : adv === 'adelantadas' ? `Se pagan las cuotas ${unpaid[0]?.number} a ${unpaid[Math.min(advCount, unpaid.length) - 1]?.number}.`
+    : adv === 'adelantadas' ? `Se pagan las cuotas ${unpaid[0]?.number} a ${advCount > 0 ? unpaid[Math.min(advCount, unpaid.length) - 1]?.number : '—'}.`
     : payTotal >= totalPendingAll ? 'El préstamo queda saldado.' : `Quedan RD$ ${money0(totalPendingAll - payTotal)} por pagar.`
 
   async function confirm() {
@@ -226,8 +228,37 @@ export function RegisterPayment() {
           </div>
           <button
             onClick={async () => {
-              const text = `Recibo #${receipt} — ${clientQuery.data?.full_name ?? ''} — RD$ ${money0(payTotal)} (${PAYMENT_METHOD_LABEL[method] ?? method})`
-              try { await navigator.share({ text }) } catch { try { await navigator.clipboard.writeText(text) } catch { /* sin portapapeles */ } }
+              // Compartir como PDF real (mismo documento que el comprobante): la cuota
+              // es la primera sin pagar antes del pago, salvo el abono a capital.
+              const successType = adv === 'interes' ? 'interest' : adv === 'capital' ? 'principal' : 'regular'
+              await shareReceipt({
+                payment: {
+                  receipt_number: receipt,
+                  payment_type: successType,
+                  paid_at: new Date().toISOString(),
+                  status: 'active',
+                  principal_amount: preview.capital,
+                  interest_amount: preview.interes,
+                  late_fee_amount: preview.mora,
+                  total_amount: payTotal,
+                  pending_principal_after: currentPrincipal - preview.capital,
+                  next_due_date: null,
+                  next_installment_amount: null,
+                  payment_method: method,
+                  installment_number: adv === 'capital' ? null : next?.number ?? null,
+                  installment_total: adv === 'capital' ? null : total
+                },
+                businessName: business?.name ?? 'NEXCREDIT',
+                ownerName: business?.owner_name,
+                phone: business?.phone,
+                whatsapp: business?.whatsapp,
+                address: business?.address,
+                rnc: business?.rnc,
+                footer: business?.receipt_footer,
+                logoUrl: business?.logo_url,
+                clientName: clientQuery.data?.full_name ?? '',
+                loanNumber: loan?.loan_number ?? 0
+              })
             }}
             className="block w-full rounded-xl bg-[#2563EB] py-3 text-center text-sm font-semibold text-white"
           >
@@ -288,8 +319,8 @@ export function RegisterPayment() {
                       {key === 'adelantadas' ? (
                         <div className="flex items-center gap-2">
                           <label className="text-xs text-[var(--nc-muted)]">Cuotas a adelantar</label>
-                          <input type="number" min={1} max={unpaid.length} value={advCount}
-                            onChange={(e) => setAdvCount(Math.max(1, Math.min(unpaid.length, Number(e.target.value) || 1)))}
+                          <input type="number" min={1} max={unpaid.length} value={advCount === 0 ? '' : advCount}
+                            onChange={(e) => setAdvCount(e.target.value === '' ? 0 : Math.max(1, Math.min(unpaid.length, Number(e.target.value))))}
                             className="w-20 rounded-lg bg-[var(--nc-card)] px-2 py-1.5 text-sm text-[var(--nc-text)]" />
                           <span className="text-xs text-[var(--nc-muted)]">de {unpaid.length} pendientes</span>
                         </div>

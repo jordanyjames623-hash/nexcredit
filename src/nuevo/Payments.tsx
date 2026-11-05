@@ -30,11 +30,22 @@ export function Payments() {
     setLoadingReceiptId(p.id)
     const { data, error } = await supabase
       .from('payment_details')
-      .select('receipt_number, payment_type, paid_at, principal_amount, interest_amount, late_fee_amount, total_amount, pending_principal_after, next_due_date, next_installment_amount, status')
+      .select('receipt_number, payment_type, paid_at, principal_amount, interest_amount, late_fee_amount, total_amount, pending_principal_after, next_due_date, next_installment_amount, status, payment_method')
       .eq('id', p.id)
       .single()
     setLoadingReceiptId(null)
-    if (!error && data) setOpenReceipt({ data: data as ReceiptData, clientName: p.client_name, loanNumber: p.loan_number })
+    if (!error && data) {
+      // La cuota que cubrió el pago: misma lectura que la lista (payments.installment_id).
+      const instId = instByPayment?.get(p.id) ?? null
+      const instDetail = instId ? instDetailById.get(instId) : undefined
+      const total = instDetail ? progress?.get(instDetail.loan_id) : undefined
+      const enriched = {
+        ...(data as ReceiptData),
+        installment_number: instDetail?.number ?? null,
+        installment_total: total ?? null
+      } as ReceiptData
+      setOpenReceipt({ data: enriched, clientName: p.client_name, loanNumber: p.loan_number })
+    }
   }
 
   const { data, isLoading, error } = useQuery({
