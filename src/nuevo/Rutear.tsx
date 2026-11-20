@@ -452,7 +452,7 @@ function CreateClosePassword() {
 
 
   return (
-    <Modal title="Cerrar ruteo" subtitle="Primero confirma tu contraseña y luego entrega el efectivo para cuadrar." onClose={onClose} size="sm">
+    <Modal title="Cerrar ruteo" subtitle="Primero confirma tu clave de cierre y luego entrega el efectivo para cuadrar." onClose={onClose} size="sm">
       {error && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{error}</p>}
       {!verified && <CreateClosePassword />}
       {!verified ? (
@@ -463,7 +463,7 @@ function CreateClosePassword() {
             <input id="password" type="password" required autoComplete="current-password" className="field-input" value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
           <button type="submit" disabled={verifying} className="btn-solid w-full">
-            <Lock size={16} aria-hidden="true" /> {verifying ? 'Verificando…' : 'Verificar contraseña'}
+            <Lock size={16} aria-hidden="true" /> {verifying ? 'Verificando…' : 'Verificar clave de cierre'}
           </button>
         </form>
       ) : (
