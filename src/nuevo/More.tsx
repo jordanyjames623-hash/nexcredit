@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link, useNavigate } from 'react-router-dom'
-import { Activity, BarChart3, Brain, Calendar, ChevronDown, ChevronRight, FileText, HandCoins, LogOut, Percent, Receipt, RefreshCw, Route, Settings, Shield, Users, Wallet, type LucideIcon } from 'lucide-react'
+import { Activity, BarChart3, Brain, Calendar, ChevronDown, ChevronRight, FileText, HandCoins, LogOut, Navigation, Percent, Receipt, RefreshCw, Route, Settings, Shield, Users, Wallet, type LucideIcon } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { GreetingHeader } from './GreetingHeader'
@@ -24,6 +24,7 @@ const ROWS: Row[] = [
   { icon: Wallet, color: '#22C55E', title: 'Caja', sub: 'Efectivo y movimientos del día', to: '/caja' },
   { icon: HandCoins, color: '#EF4444', title: 'Cobranza', sub: 'Gestión de cobros atrasados', to: '/cobranza' },
   { icon: Route, color: '#3B82F6', title: 'Rutas', sub: 'Rutas de cobro', to: '/rutas' },
+  { icon: Navigation, color: '#0891B2', title: 'Rutear', sub: 'Sal a cobrar por tu ruta y cuadra al volver', to: '/rutear' },
   { icon: Receipt, color: '#F97316', title: 'Gastos', sub: 'Gastos del negocio', to: '/gastos' },
   { icon: FileText, color: '#A855F7', title: 'Solicitudes', sub: 'Solicitudes de préstamo', to: '/solicitudes' },
   { icon: Brain, color: '#6366F1', title: 'Inteligencia', sub: 'Análisis inteligente', to: '/inteligencia' },
