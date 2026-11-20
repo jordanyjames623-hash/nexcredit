@@ -348,7 +348,7 @@ function RuteoTable({ rows, routeNames, showCollector }: { rows: (RuteoSession &
               <td>{s.closed_at ? `${dateTime(s.closed_at).date} · ${dateTime(s.closed_at).time}` : '—'}</td>
               <td className="money">RD$ {money(s.opening_amount)}</td>
               <td className="money">{s.delivered_amount == null ? '—' : `RD$ ${money(s.delivered_amount)}`}</td>
-              <td className="money">{s.difference == null ? '—' : `RD$ ${money(s.difference)}`}</td>
+              <td className="money">{s.difference == null ? '—' : Math.abs(s.difference) <= 0.004 ? 'Cuadrado' : s.difference > 0 ? `Sobrante RD$${money(s.difference)}` : `Faltante RD$${money(Math.abs(s.difference))}`}</td>
               <td>{s.difference_reason ?? '—'}</td>
             </tr>
           ))}
