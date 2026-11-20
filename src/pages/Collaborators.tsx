@@ -367,7 +367,7 @@ function CollaboratorCard({ collaborator, lastActivity, isOnline, onChanged, oth
       <div className="mt-4 border-t border-line pt-4">
         <p className="field-label">También puede ver los préstamos y gastos creados por</p>
         <p className="mb-2 text-xs text-content-muted">
-            Por defecto, {collaborator.full_name || 'este colaborador'} solo ve lo que él mismo crea. Marca a quién más puede ver.
+          Por defecto, {collaborator.full_name || 'este colaborador'} solo ve lo que él mismo crea. Marca a quién más puede ver.
         </p>
         <div className="flex flex-wrap gap-2">
           {otherPeople.map((p) => {
