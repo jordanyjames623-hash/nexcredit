@@ -29,7 +29,7 @@ type RuteoResumen = {
   opening_amount: number; collected_cash: number; collected_transfer: number; collected_off_route_cash: number
   lent: number; expenses: number; expected_cash: number; target_amount: number; target_clients: number
   collected_clients: number; delivered_amount: number | null; difference: number | null
-  collected_other: number; collected_off_route_other: number; collected_clients_route: number; collected_clients_off_route: number
+  collected_other: number; collected_off_route_other: number; collected_clients_route: number; collected_clients_off_route: number; collected_off_route_transfer: number
 }
 
 
@@ -55,6 +55,7 @@ function normalizeResumen(data: unknown): RuteoResumen {
     collected_clients: num(row?.collected_clients),
     collected_other: num(row?.collected_other),
     collected_off_route_other: num(row?.collected_off_route_other),
+    collected_off_route_transfer: num(row?.collected_off_route_transfer),
     collected_clients_route: num(row?.collected_clients_route),
     collected_clients_off_route: num(row?.collected_clients_off_route),
     delivered_amount: row?.delivered_amount == null ? null : num(row?.delivered_amount),
@@ -468,6 +469,61 @@ function CreateClosePassword() {
         </form>
       ) : (
         <form onSubmit={(e) => { e.preventDefault(); setError(null); mutation.mutate() }} className="space-y-4">
+          <div>
+          
+            <p className="t-label">Capital inicial</p>
+            <p className="money text-sm font-medium text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.opening_amount)}`}</p>
+          </div>
+          <div>
+          
+            <p className="t-label">Se tenía que cobrar</p>
+            <p className="money text-sm font-medium text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.target_amount)}`}</p>
+          </div>
+          <div>
+          
+            <p className="t-label">Cobrado en efectivo</p>
+            <p className="money text-sm font-medium text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.collected_cash)}`}</p>
+          </div>
+          <div>
+          
+            <p className="t-label">Cobrado por transferencia</p>
+            <p className="money text-sm font-medium text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.collected_transfer)}`}</p>
+          </div>
+          <div>
+          
+            <p className="t-label">Cobrado por otros métodos</p>
+            <p className="money text-sm font-medium text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.collected_other)}`}</p>
+          </div>
+          <div>
+          
+            <p className="t-label">Cobro fuera de ruta (efectivo)</p>
+            <p className="money text-sm font-medium text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.collected_off_route_cash)}`}</p>
+          </div>
+          <div>
+          
+            <p className="t-label">Cobro fuera de ruta (transferencia)</p>
+            <p className="money text-sm font-medium text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.collected_off_route_transfer)}`}</p>
+          </div>
+          <div>
+          
+            <p className="t-label">Cobro fuera de ruta (otros métodos)</p>
+            <p className="money text-sm font-medium text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.collected_off_route_other)}`}</p>
+          </div>
+          <div>
+          
+            <p className="t-label">Prestado</p>
+            <p className="money text-sm font-medium text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.lent)}`}</p>
+          </div>
+          <div>
+          
+            <p className="t-label">Gastos</p>
+            <p className="money text-sm font-medium text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.expenses)}`}</p>
+          </div>
+          <div>
+          
+            <p className="t-label">Clientes cobrados</p>
+            <p className="text-sm font-medium text-content">{resumen === undefined ? '…' : `${resumen.collected_clients_route} de ${resumen.target_clients}`}</p>
+          </div>
           <p className="rounded-lg bg-background px-3 py-2 text-sm">
             <span className="text-content-muted">Esperado ahora: </span>
             <span className="money font-semibold text-content">{expected === undefined ? '…' : `RD$ ${money(expected)}`}</span>
