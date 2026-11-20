@@ -348,7 +348,7 @@ function CollaboratorCard({ collaborator, lastActivity, isOnline, onChanged, oth
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <button disabled={!isOnline || toggleActive.isPending} onClick={() => toggleActive.mutate()} className="text-xs text-content-muted hover:text-danger">
+          <button disabled={!isOnline || toggleActive.isPending} onClick={() => toggleActive.mutate()} className="text-xs text-content-muted hover:text- danger">
             {collaborator.is_active ? 'Desactivar' : 'Activar'}
           </button>
           <button disabled={!isOnline} onClick={() => setShowReset((v) => !v)} className="flex items-center gap-1 text-xs text-primary hover:underline">
@@ -359,7 +359,7 @@ function CollaboratorCard({ collaborator, lastActivity, isOnline, onChanged, oth
 
       {showReset && <ResetPasswordForm userId={collaborator.user_id} onDone={() => setShowReset(false)} />}
       {error && <p className="mt-3 rounded bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{error}</p>}
-      
+
       <div className="mt-4 border-t border-line pt-4">
         <PermissionPanel permissions={permissions} onChange={setPermissions} />
       </div>
