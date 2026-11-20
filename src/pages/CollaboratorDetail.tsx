@@ -19,12 +19,13 @@ type ActivityRow = { id: string; action: string; created_at: string; amount: num
 
 export function CollaboratorDetail() {
   const { id } = useParams<{ id: string }>()
-  const { isOwner } = useAuth()
+  const { isOwner, hasPermission } = useAuth()
+  
   const [tab, setTab] = useState<(typeof TABS)[number]>('perfil')
 
   const { data: collaborator } = useQuery({
     queryKey: ['collaborator-detail', id],
-    enabled: isOwner,
+    enabled: isOwner || hasPermission('employees.manage'),
     queryFn: async () => {
       const { data, error } = await supabase.rpc('list_collaborators')
       if (error) throw error
@@ -77,7 +78,7 @@ export function CollaboratorDetail() {
     }
   })
 
-  if (!isOwner) return <p className="text-sm text-content-muted">Solo el propietario puede ver esta ficha.</p>
+  if (!isOwner && !hasPermission('employees.manage')) return <p className="text-sm text-content-muted">Solo el propietario o un gerente puede ver esta ficha.</p>
   if (!collaborator) return <p className="text-sm text-content-muted">Cargando…</p>
 
   return (
