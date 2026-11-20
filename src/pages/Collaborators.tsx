@@ -146,8 +146,8 @@ export function Collaborators() {
             isOnline={isOnline}
             onChanged={invalidate}
             otherPeople={[
-              { id: ownerId, name: `${ownerName} (Propietario)` },
-              ...(data ?? []).filter((x) => x.user_id !== c.user_id).map((x) => ({ id: x.user_id, name: x.full_name || x.email }))
+              { id: ownerId, name: `${ownerName} (${isOwner ? 'Propietario' : 'Gerente'})` },
+              ...(data ?? []).filter((x) => x.user_id !== c.user_id).map((x) => ({ id: x.user_id, name: `${x.full_name || x.email} (${x.permissions?.['employees.manage'] ? 'Gerente' : 'Colaborador'})` }))
             ]}
             grantedTargets={(grants ?? []).filter((g) => g.viewer_id === c.user_id).map((g) => g.target_id)}
           />
