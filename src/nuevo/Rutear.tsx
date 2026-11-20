@@ -29,6 +29,7 @@ type RuteoResumen = {
   opening_amount: number; collected_cash: number; collected_transfer: number; collected_off_route_cash: number
   lent: number; expenses: number; expected_cash: number; target_amount: number; target_clients: number
   collected_clients: number; delivered_amount: number | null; difference: number | null
+  collected_other: number; collected_off_route_other: number; collected_clients_route: number; collected_clients_off_route: number
 }
 
 
@@ -52,6 +53,10 @@ function normalizeResumen(data: unknown): RuteoResumen {
     target_amount: num(row?.target_amount),
     target_clients: num(row?.target_clients),
     collected_clients: num(row?.collected_clients),
+    collected_other: num(row?.collected_other),
+    collected_off_route_other: num(row?.collected_off_route_other),
+    collected_clients_route: num(row?.collected_clients_route),
+    collected_clients_off_route: num(row?.collected_clients_off_route),
     delivered_amount: row?.delivered_amount == null ? null : num(row?.delivered_amount),
     difference: row?.difference == null ? null : num(row?.difference)
   }
@@ -229,9 +234,19 @@ function OpenRuteoCard({ session, routeName, onClose }: { session: RuteoSession;
           <p className="money text-sm font-medium text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.collected_transfer)}`}</p>
         </div>
         <div>
+        
+          <p className="t-label">Cobrado por otros métodos</p>
+          <p className="money text-sm font-medium text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.collected_other)}`}</p>
+        </div>
+        <div>
           <p className="t-label">Cobrado fuera de ruta (efectivo)</p>
           <p className="money text-sm font-medium text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.collected_off_route_cash)}`}</p>
         </div>
+        <div>
+        
+          <p className="t-label">Cobro fuera de ruta (otros métodos)</p>
+          <p className="money text-sm font-medium text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.collected_off_route_other)}`}</p>
+          </div>
         <div>
           <p className="t-label">Prestado</p>
           <p className="money text-sm font-medium text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.lent)}`}</p>
@@ -250,7 +265,7 @@ function OpenRuteoCard({ session, routeName, onClose }: { session: RuteoSession;
         </div>
         <div>
           <p className="t-label">Clientes cobrados</p>
-          <p className="text-sm font-medium text-content">{resumen === undefined ? '…' : `${resumen.collected_clients} de ${resumen.target_clients}`}</p>
+          <p className="text-sm font-medium text-content">{resumen === undefined ? '…' : `${resumen.collected_clients_route} de ${resumen.target_clients}`}</p>
         </div>
       </div>
       <button onClick={onClose} className="btn-secondary">
@@ -343,7 +358,44 @@ function RuteoTable({ rows, routeNames, showCollector }: { rows: (RuteoSession &
 }
 
 
-function CloseRuteoModal({ session, onClose }: { session: RuteoSession; onClose: () => void }) {
+function CreateClosePassword() {
+    const toast = useToast()
+      
+  const [showForm, setShowForm] = useState(false)
+  const [p1, setP1] = useState('')
+  const [p2, setP2] = useState('')
+  const [error, setError] = useState<string | null>(null)
+
+  const mutation = useMutation({
+      mutationFn: async () => {
+          const { error } = await supabase.auth.updateUser({ password: p1 })
+        if (error) throw error
+      },
+    onSuccess: () => { toast.success('Clave de cierre creada'); setShowForm(false); setP1(''); setP2('') },
+    onError: (e: any) => setError(e.message ?? 'No se pudo crear la clave de cierre.')
+  })
+
+  if (!showForm) {
+      return <button type="button" onClick={() => setShowForm(true)} className="text-sm font-medium text-primary underline">¿No tienes clave de cierre? Créala aquí</button>
+  }
+
+  return (
+      <form onSubmit={(e) => { e.preventDefault(); if (p1.length < 6) { setError('La clave debe tener al menos 6 caracteres.'); return } if (p1 !== p2) { setError('Las claves no coinciden.'); return } setError(null); mutation.mutate() }} className="space-y-4">
+      
+        {error && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{error}</p>}
+        <div>
+        <label className="field-label" htmlFor="new-close-password">Nueva clave</label>
+          <input id="new-close-password" type="password" required minLength={6} autoComplete="new-password" className="field-input" value={p1} onChange={(e) => setP1(e.target.value)} placeholder="Mínimo 6 caracteres" />
+        </div>
+        <div>
+        
+        <label className="field-label" htmlFor="repeat-close-password">Repetir clave</label>
+          <input id="repeat-close-password" type="password" required minLength={6} autoComplete="new-password" className="field-input" value={p2} onChange={(e) => setP2(e.target.value)} placeholder="Repite la nueva clave" />
+        </div>
+        <button type="submit" disabled={mutation.isPending} className="btn-solid w-full">{mutation.isPending ? 'Creando…' : 'Crear clave de cierre'}</button>
+                    </form>
+  )}
+    function CloseRuteoModal({ session, onClose }: { session: RuteoSession; onClose: () => void }) {
   const qc = useQueryClient()
   const toast = useToast()
   const { session: authSession } = useAuth()
@@ -402,6 +454,7 @@ function CloseRuteoModal({ session, onClose }: { session: RuteoSession; onClose:
   return (
     <Modal title="Cerrar ruteo" subtitle="Primero confirma tu contraseña y luego entrega el efectivo para cuadrar." onClose={onClose} size="sm">
       {error && <p className="rounded-lg bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{error}</p>}
+      {!verified && <CreateClosePassword />}
       {!verified ? (
         <form onSubmit={verifyPassword} className="space-y-4">
           <p className="text-sm text-content-muted">Confirma que eres tú con tu contraseña ({myEmail || 'sin correo en la sesión'}).</p>
@@ -419,6 +472,14 @@ function CloseRuteoModal({ session, onClose }: { session: RuteoSession; onClose:
             <span className="text-content-muted">Esperado ahora: </span>
             <span className="money font-semibold text-content">{expected === undefined ? '…' : `RD$ ${money(expected)}`}</span>
           </p>
+          <p className="rounded-lg bg-background px-3 py-2 text-sm">
+            <span className="text-content-muted">Cobrado por otros métodos: </span>
+            <span className="money font-semibold text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.collected_other)}`}</span>
+          </p>
+          <p className="rounded-lg bg-background px-3 py-2 text-sm">
+            <span className="text-content-muted">Cobro fuera de ruta (otros métodos): </span>
+          <span className="money font-semibold text-content">{resumen === undefined ? '…' : `RD$ ${money(resumen.collected_off_route_other)}`}</span>
+      </p>
           <div>
             <label className="field-label" htmlFor="delivered">Monto devuelto (RD$)</label>
             <input id="delivered" type="number" min="0" step="0.01" required className="field-input money" value={delivered} onChange={(e) => setDelivered(e.target.value)} />
