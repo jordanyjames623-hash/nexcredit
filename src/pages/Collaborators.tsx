@@ -13,6 +13,7 @@ type Collaborator = {
 type LastActivity = { user_id: string; created_at: string }
 
 const PERMISSION_KEYS = [
+  { key: 'employees.manage', label: 'Gestionar empleados (crear y administrar empleados inferiores)' },
   { key: 'expenses.view', label: 'Ver gastos' },
   { key: 'expenses.create', label: 'Crear gastos' },
   { key: 'expenses.update', label: 'Editar gastos' },
@@ -27,6 +28,28 @@ const PERMISSION_KEYS = [
   { key: 'cash_sessions.view_all', label: 'Ver las cajas de todo el negocio (no solo la suya)' }
 ] as const
 
+type PresetId = 'gerente' | 'contable' | 'cobrador' | 'personalizado'
+
+const PRESET_LABELS: Record<PresetId, string> = {
+  gerente: 'Gerente',
+  contable: 'Contable',
+  cobrador: 'Cobrador',
+  personalizado: 'Personalizado'
+}
+
+const PRESET_DESCRIPTIONS: Record<PresetId, string> = {
+  gerente: 'Puede hacer casi todo y gestionar empleados, pero no puede crear otro gerente.',
+  contable: 'Solo lectura: ve montos, reportes y cuadre, no puede cambiar nada.',
+  cobrador: 'Cobra por sus rutas asignadas.',
+  personalizado: 'Elige los permisos uno por uno.'
+}
+
+const PRESET_PERMISSIONS: Record<PresetId, string[]> = {
+  gerente: PERMISSION_KEYS.map((p) => p.key),
+  contable: ['expenses.view', 'expenses.view_all', 'routes.view_all', 'cash_sessions.view_all', 'ruteo.view_all', 'reports.view_all', 'loans.view_all'],
+  cobrador: ['routes.view', 'ruteo.open', 'expenses.view']
+}
+
 function timeAgo(iso: string | undefined) {
   if (!iso) return 'Sin actividad registrada'
   const diffMs = Date.now() - new Date(iso).getTime()
@@ -39,16 +62,17 @@ function timeAgo(iso: string | undefined) {
 }
 
 export function Collaborators() {
-  const { isOwner, session, profile } = useAuth()
+  const { isOwner, hasPermission, session, profile } = useAuth()
+  const canManageEmployees = isOwner || hasPermission('employees.manage')
   const ownerId = session?.user.id ?? ''
   const ownerName = profile?.full_name || 'Propietario'
   const qc = useQueryClient()
   const isOnline = useOnlineStatus()
   const [showForm, setShowForm] = useState(false)
-
   const { data, isLoading, error } = useQuery({
     queryKey: ['collaborators'],
-    enabled: isOwner,
+
+    enabled: canManageEmployees,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('list_collaborators')
       if (error) throw error
@@ -58,7 +82,7 @@ export function Collaborators() {
 
   const { data: grants } = useQuery({
     queryKey: ['visibility-grants'],
-    enabled: isOwner,
+    enabled: canManageEmployees,
     queryFn: async () => {
       const { data, error } = await supabase.from('visibility_grants').select('viewer_id, target_id')
       if (error) throw error
@@ -68,7 +92,7 @@ export function Collaborators() {
 
   const { data: activity } = useQuery({
     queryKey: ['collaborators-activity', (data ?? []).map((c) => c.user_id).join(',')],
-    enabled: isOwner && (data?.length ?? 0) > 0,
+    enabled: canManageEmployees && (data?.length ?? 0) > 0,
     queryFn: async () => {
       const { data: rows, error } = await supabase
         .from('activity_logs')
@@ -81,15 +105,12 @@ export function Collaborators() {
       return map
     }
   })
-
-  if (!isOwner) {
-    return <p className="text-sm text-content-muted">Solo el propietario puede gestionar colaboradores.</p>
+  if (!canManageEmployees) {
+    return <p className="text-sm text-content-muted">Solo el propietario o un gerente puede gestionar colaboradores.</p>
   }
-
   function invalidate() {
     qc.invalidateQueries({ queryKey: ['collaborators'] })
   }
-
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -101,17 +122,14 @@ export function Collaborators() {
           {showForm ? 'Cancelar' : <><UserPlus size={16} className="mr-1.5" /> Nuevo colaborador</>}
         </button>
       </div>
-
       {showForm && (
         <NewCollaboratorForm onDone={() => { setShowForm(false); invalidate() }} />
       )}
-
       {isLoading && <p className="text-sm text-content-muted">Cargando…</p>}
       {error && <p className="text-sm text-danger">No se pudo cargar la lista de colaboradores.</p>}
       {data?.length === 0 && !isLoading && (
         <div className="glass-card px-5 py-10 text-center text-sm text-content-muted">Aún no has creado colaboradores.</div>
       )}
-
       <div className="space-y-4">
         {data?.map((c) => (
           <CollaboratorCard
@@ -139,6 +157,25 @@ function NewCollaboratorForm({ onDone }: { onDone: () => void }) {
   const [ownerPassword, setOwnerPassword] = useState('')
   const [permissions, setPermissions] = useState<Record<string, boolean>>({})
   const [error, setError] = useState<string | null>(null)
+  const { isOwner, hasPermission } = useAuth()
+  const [preset, setPreset] = useState<PresetId>('personalizado')
+  const isManager = !isOwner
+
+  function applyPreset(id: PresetId) {
+    setPreset(id)
+    if (id === 'personalizado') return
+    // Un gerente solo puede conceder los permisos que él mismo tiene.
+    const next: Record<string, boolean> = {}
+    PRESET_PERMISSIONS[id].forEach((k) => {
+      if (isOwner || hasPermission(k)) next[k] = true
+    })
+    setPermissions(next)
+  }
+
+  function handlePermissionsChange(next: Record<string, boolean>) {
+    setPreset('personalizado')
+    setPermissions(next)
+  }
 
   const mutation = useMutation({
     mutationFn: async () => {
@@ -181,7 +218,30 @@ function NewCollaboratorForm({ onDone }: { onDone: () => void }) {
           <input id="ownerPassword" required type="password" className="field-input w-full min-w-0" value={ownerPassword} onChange={(e) => setOwnerPassword(e.target.value)} />
         </div>
       </div>
-      <PermissionPanel permissions={permissions} onChange={setPermissions} />
+      <div>
+        <p className="field-label">Preset de permisos</p>
+        <div className="flex flex-wrap gap-2">
+          {(['gerente', 'contable', 'cobrador', 'personalizado'] as PresetId[])
+            .filter((id) => id !== 'gerente' || !isManager)
+            .map((id) => (
+              <button
+                key={id}
+                type="button"
+                onClick={() => applyPreset(id)}
+                className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${preset === id ? 'bg-primary text-white' : 'border border-line text-content-muted hover:bg-background'}`}
+              >
+                {PRESET_LABELS[id]}
+              </button>
+            ))}
+        </div>
+        <p className="mt-2 text-xs text-content-muted">{PRESET_DESCRIPTIONS[preset]}</p>
+      </div>
+      <PermissionPanel
+        permissions={permissions}
+        onChange={handlePermissionsChange}
+        hiddenKeys={isManager ? ['employees.manage'] : []}
+        isKeyDisabled={(key) => isManager && !hasPermission(key)}
+      />
       <button type="submit" disabled={mutation.isPending} className="btn-solid">
         {mutation.isPending ? 'Creando…' : 'Crear colaborador'}
       </button>
@@ -189,7 +249,12 @@ function NewCollaboratorForm({ onDone }: { onDone: () => void }) {
   )
 }
 
-function PermissionPanel({ permissions, onChange }: { permissions: Record<string, boolean>; onChange: (p: Record<string, boolean>) => void }) {
+function PermissionPanel({ permissions, onChange, hiddenKeys = [], isKeyDisabled }: {
+  permissions: Record<string, boolean>
+  onChange: (p: Record<string, boolean>) => void
+  hiddenKeys?: string[]
+  isKeyDisabled?: (key: string) => boolean
+}) {
   return (
     <div>
       <div className="mb-2 flex items-center gap-1.5">
@@ -197,14 +262,16 @@ function PermissionPanel({ permissions, onChange }: { permissions: Record<string
         <p className="field-label mb-0">Permisos</p>
       </div>
       <div className="flex flex-wrap gap-2">
-        {PERMISSION_KEYS.map((p) => {
+        {PERMISSION_KEYS.filter((p) => !hiddenKeys.includes(p.key)).map((p) => {
           const active = Boolean(permissions[p.key])
+          const disabled = isKeyDisabled?.(p.key) ?? false
           return (
             <button
               key={p.key}
               type="button"
+              disabled={disabled}
               onClick={() => onChange({ ...permissions, [p.key]: !active })}
-              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'bg-primary text-white' : 'border border-line text-content-muted hover:bg-background'}`}
+              className={`rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${active ? 'bg-primary text-white' : 'border border-line text-content-muted hover:bg-background'} ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
             >
               {p.label}
             </button>
@@ -270,7 +337,7 @@ function CollaboratorCard({ collaborator, lastActivity, isOnline, onChanged, oth
             </div>
             <p className="text-xs text-content-muted">{collaborator.email}{collaborator.phone ? ` · ${collaborator.phone}` : ''}</p>
             <p className="text-xs text-content-muted">{timeAgo(lastActivity)}</p>
-            <Link to={`/colaboradores/${collaborator.user_id}`} className="text-xs text-primary hover:underline">Ver ficha completa →</Link>
+            <Link to={`/colaboradores/${collaborator.user_id}`} className="text-xs text-primary hover:underline">Ver ficha completa </Link>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
@@ -285,7 +352,6 @@ function CollaboratorCard({ collaborator, lastActivity, isOnline, onChanged, oth
 
       {showReset && <ResetPasswordForm userId={collaborator.user_id} onDone={() => setShowReset(false)} />}
       {error && <p className="mt-3 rounded bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{error}</p>}
-
       <div className="mt-4 border-t border-line pt-4">
         <PermissionPanel permissions={permissions} onChange={setPermissions} />
       </div>
@@ -293,6 +359,7 @@ function CollaboratorCard({ collaborator, lastActivity, isOnline, onChanged, oth
       <div className="mt-4 border-t border-line pt-4">
         <p className="field-label">También puede ver los préstamos y gastos creados por</p>
         <p className="mb-2 text-xs text-content-muted">
+
           Por defecto, {collaborator.full_name || 'este colaborador'} solo ve lo que él mismo crea. Marca a quién más puede ver.
         </p>
         <div className="flex flex-wrap gap-2">
