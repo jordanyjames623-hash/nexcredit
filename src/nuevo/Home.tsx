@@ -188,7 +188,7 @@ export function Home() {
             const status = r.overdueCount === 0 ? 'vence hoy' : r.overdueCount === 1 ? `vencido ${relDayEs(r.due_date)}` : `${r.overdueCount} cuotas vencidas`
             return (
               <div key={r.client_id} className="flex items-center gap-3 py-3 first:pt-3 last:pb-0">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: avatarColor(r.client_id) }}>
+                <Link to={`/clientes/${r.client_id}`} aria-label={r.client_name} className="flex min-w-0 flex-1 items-center gap-3"><span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-sm font-bold text-white" style={{ backgroundColor: avatarColor(r.client_id) }}>
                   {initials(r.client_name)}
                 </span>
                 <span className="min-w-0 flex-1">
@@ -197,7 +197,7 @@ export function Home() {
                     Cuota {r.installment_number}{p ? ` de ${p.total}` : ''} · {status}
                   </span>
                 </span>
-                <span className="flex shrink-0 flex-col items-end gap-1.5">
+                </Link><span className="flex shrink-0 flex-col items-end gap-1.5">
                   <span className="font-disp text-sm font-bold text-[var(--nc-text)]">RD$ {money0(r.total)}</span>
                   <span className="flex items-center gap-1.5">
                     {tel && (
