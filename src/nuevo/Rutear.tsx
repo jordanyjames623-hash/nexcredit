@@ -1,5 +1,5 @@
 // Rutear — panel nuevo
-import { useState } from 'react'
+import { useState, type FormEvent } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import { Route, Wallet, Lock, History, Play } from 'lucide-react'
 import { supabase } from '@/lib/supabase'
@@ -374,7 +374,7 @@ function CloseRuteoModal({ session, onClose }: { session: RuteoSession; onClose:
   const differenceLabel = difference === null ? null : Math.abs(difference) <= 0.004 ? 'Cuadrado' : difference > 0 ? 'Sobrante' : 'Faltante'
 
 
-  async function verifyPassword(e: React.FormEvent) {
+  async function verifyPassword(e: FormEvent) {
     e.preventDefault()
     setError(null)
     setVerifying(true)
