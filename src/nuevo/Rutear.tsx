@@ -369,7 +369,7 @@ function CreateClosePassword() {
 
   const mutation = useMutation({
       mutationFn: async () => {
-          const { error } = await supabase.auth.updateUser({ password: p1 })
+          const { error } = await supabase.rpc('set_close_password', { p_password: p1 })
         if (error) throw error
       },
     onSuccess: () => { toast.success('Clave de cierre creada'); setShowForm(false); setP1(''); setP2('') },
@@ -431,9 +431,10 @@ function CreateClosePassword() {
     e.preventDefault()
     setError(null)
     setVerifying(true)
-    const { error } = await supabase.auth.signInWithPassword({ email: myEmail, password })
+    const { data, error } = await supabase.rpc('verify_close_password', { p_password: password })
     setVerifying(false)
     if (error) { setError(error.message ?? 'La contraseña no es correcta.'); return }
+    if (data !== true) { setError('La clave de cierre no es correcta.'); return }
     setVerified(true)
   }
 
