@@ -344,11 +344,11 @@ function CollaboratorCard({ collaborator, lastActivity, isOnline, onChanged, oth
             </div>
             <p className="text-xs text-content-muted">{collaborator.email}{collaborator.phone ? ` · ${collaborator.phone}` : ''}</p>
             <p className="text-xs text-content-muted">{timeAgo(lastActivity)}</p>
-            <Link to={`/colaboradores/${collaborator.user_id}`} className="text-xs text-primary hover:underline">Ver ficha completa→</Link>
+            <Link to={`/colaboradores/${collaborator.user_id}`} className="text-xs text-primary hover:underline">Ver ficha completa →</Link>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
-          <button disabled={!isOnline || toggleActive.isPending} onClick={() => toggleActive.mutate()} className="text-xs text-content-muted hover:text- danger">
+          <button disabled={!isOnline || toggleActive.isPending} onClick={() => toggleActive.mutate()} className="text-xs text-content-muted hover:text-danger">
             {collaborator.is_active ? 'Desactivar' : 'Activar'}
           </button>
           <button disabled={!isOnline} onClick={() => setShowReset((v) => !v)} className="flex items-center gap-1 text-xs text-primary hover:underline">
