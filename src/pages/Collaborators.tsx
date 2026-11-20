@@ -47,7 +47,8 @@ const PRESET_DESCRIPTIONS: Record<PresetId, string> = {
 const PRESET_PERMISSIONS: Record<PresetId, string[]> = {
   gerente: PERMISSION_KEYS.map((p) => p.key),
   contable: ['expenses.view', 'expenses.view_all', 'routes.view_all', 'cash_sessions.view_all', 'ruteo.view_all', 'reports.view_all', 'loans.view_all'],
-  cobrador: ['routes.view', 'ruteo.open', 'expenses.view']
+  cobrador: ['routes.view', 'ruteo.open', 'expenses.view'],
+    personalizado: [],
 }
 
 function timeAgo(iso: string | undefined) {
@@ -69,9 +70,9 @@ export function Collaborators() {
   const qc = useQueryClient()
   const isOnline = useOnlineStatus()
   const [showForm, setShowForm] = useState(false)
+
   const { data, isLoading, error } = useQuery({
     queryKey: ['collaborators'],
-
     enabled: canManageEmployees,
     queryFn: async () => {
       const { data, error } = await supabase.rpc('list_collaborators')
@@ -105,12 +106,15 @@ export function Collaborators() {
       return map
     }
   })
+
   if (!canManageEmployees) {
     return <p className="text-sm text-content-muted">Solo el propietario o un gerente puede gestionar colaboradores.</p>
   }
+
   function invalidate() {
     qc.invalidateQueries({ queryKey: ['collaborators'] })
   }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -122,14 +126,17 @@ export function Collaborators() {
           {showForm ? 'Cancelar' : <><UserPlus size={16} className="mr-1.5" /> Nuevo colaborador</>}
         </button>
       </div>
+
       {showForm && (
         <NewCollaboratorForm onDone={() => { setShowForm(false); invalidate() }} />
       )}
+
       {isLoading && <p className="text-sm text-content-muted">Cargando…</p>}
       {error && <p className="text-sm text-danger">No se pudo cargar la lista de colaboradores.</p>}
       {data?.length === 0 && !isLoading && (
         <div className="glass-card px-5 py-10 text-center text-sm text-content-muted">Aún no has creado colaboradores.</div>
       )}
+
       <div className="space-y-4">
         {data?.map((c) => (
           <CollaboratorCard
@@ -337,7 +344,7 @@ function CollaboratorCard({ collaborator, lastActivity, isOnline, onChanged, oth
             </div>
             <p className="text-xs text-content-muted">{collaborator.email}{collaborator.phone ? ` · ${collaborator.phone}` : ''}</p>
             <p className="text-xs text-content-muted">{timeAgo(lastActivity)}</p>
-            <Link to={`/colaboradores/${collaborator.user_id}`} className="text-xs text-primary hover:underline">Ver ficha completa </Link>
+            <Link to={`/colaboradores/${collaborator.user_id}`} className="text-xs text-primary hover:underline">Ver ficha completa→</Link>
           </div>
         </div>
         <div className="flex shrink-0 items-center gap-3">
@@ -352,6 +359,7 @@ function CollaboratorCard({ collaborator, lastActivity, isOnline, onChanged, oth
 
       {showReset && <ResetPasswordForm userId={collaborator.user_id} onDone={() => setShowReset(false)} />}
       {error && <p className="mt-3 rounded bg-danger/10 px-3 py-2 text-sm text-danger" role="alert">{error}</p>}
+      
       <div className="mt-4 border-t border-line pt-4">
         <PermissionPanel permissions={permissions} onChange={setPermissions} />
       </div>
@@ -359,8 +367,7 @@ function CollaboratorCard({ collaborator, lastActivity, isOnline, onChanged, oth
       <div className="mt-4 border-t border-line pt-4">
         <p className="field-label">También puede ver los préstamos y gastos creados por</p>
         <p className="mb-2 text-xs text-content-muted">
-
-          Por defecto, {collaborator.full_name || 'este colaborador'} solo ve lo que él mismo crea. Marca a quién más puede ver.
+            Por defecto, {collaborator.full_name || 'este colaborador'} solo ve lo que él mismo crea. Marca a quién más puede ver.
         </p>
         <div className="flex flex-wrap gap-2">
           {otherPeople.map((p) => {
