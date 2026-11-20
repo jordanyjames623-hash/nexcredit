@@ -459,7 +459,7 @@ function CreateClosePassword() {
       {!verified && <CreateClosePassword />}
       {!verified ? (
         <form onSubmit={verifyPassword} className="space-y-4">
-          <p className="text-sm text-content-muted">Confirma que eres tú con tu contraseña ({myEmail || 'sin correo en la sesión'}).</p>
+          <p className="text-sm text-content-muted">Confirma con tu clave de cierre</p>
           <div>
             <label className="field-label" htmlFor="password">Contraseña</label>
             <input id="password" type="password" required autoComplete="current-password" className="field-input" value={password} onChange={(e) => setPassword(e.target.value)} />
