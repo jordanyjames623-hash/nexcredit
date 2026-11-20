@@ -18,6 +18,7 @@ import { NewLoanSimple } from './NewLoanSimple'
 import { NewClient } from './NewClient'
 import { More } from './More'
 import { Contracts } from './Contracts'
+import { Rutear } from './Rutear'
 
 // Las pantallas de la maqueta (tema oscuro) + entrar/registro. Las funciones actuales que
 // no estan en la maqueta viven en Mas y se reutilizan tal cual de la app anterior (mismo
@@ -72,6 +73,7 @@ export default function NuevoApp() {
           <Route path="/cobranza" element={<RequirePaid feature="cobranza"><Collections /></RequirePaid>} />
           <Route path="/rutas" element={<RequirePaid feature="rutas"><RoutesPage /></RequirePaid>} />
           <Route path="/rutas/:id" element={<RequirePaid feature="rutas"><RouteDetail /></RequirePaid>} />
+          <Route path="/rutear" element={<RequirePaid feature="ruteo"><Rutear /></RequirePaid>} />
           <Route path="/gastos" element={<RequirePaid feature="gastos"><Expenses /></RequirePaid>} />
           <Route path="/calendario" element={<RequirePaid feature="calendario"><CollectionCalendar /></RequirePaid>} />
           <Route path="/reportes" element={<Reports />} />
