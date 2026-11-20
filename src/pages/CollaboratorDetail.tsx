@@ -20,8 +20,7 @@ type ActivityRow = { id: string; action: string; created_at: string; amount: num
 export function CollaboratorDetail() {
   const { id } = useParams<{ id: string }>()
   const { isOwner, hasPermission } = useAuth()
-  
-  const [tab, setTab] = useState<(typeof TABS)[number]>('perfil')
+    const [tab, setTab] = useState<(typeof TABS)[number]>('perfil')
 
   const { data: collaborator } = useQuery({
     queryKey: ['collaborator-detail', id],
