@@ -399,8 +399,6 @@ function CreateClosePassword() {
     function CloseRuteoModal({ session, onClose }: { session: RuteoSession; onClose: () => void }) {
   const qc = useQueryClient()
   const toast = useToast()
-  const { session: authSession } = useAuth()
-  const myEmail = authSession?.user.email ?? ''
   const [password, setPassword] = useState('')
   const [verified, setVerified] = useState(false)
   const [verifying, setVerifying] = useState(false)
@@ -461,7 +459,7 @@ function CreateClosePassword() {
         <form onSubmit={verifyPassword} className="space-y-4">
           <p className="text-sm text-content-muted">Confirma con tu clave de cierre</p>
           <div>
-            <label className="field-label" htmlFor="password">Contraseña</label>
+            <label className="field-label" htmlFor="password">Clave de cierre</label>
             <input id="password" type="password" required autoComplete="current-password" className="field-input" value={password} onChange={(e) => setPassword(e.target.value)} />
           </div>
           <button type="submit" disabled={verifying} className="btn-solid w-full">
