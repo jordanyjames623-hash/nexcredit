@@ -20,6 +20,8 @@ const PERMISSION_KEYS = [
   { key: 'routes.view', label: 'Ver rutas (solo las que le asignes como cobrador)' },
   { key: 'routes.view_all', label: 'Ver todas las rutas del negocio' },
   { key: 'routes.manage', label: 'Gestionar cualquier ruta (no solo las suyas)' },
+  { key: 'ruteo.open', label: 'Rutear (abrir y cerrar ruteos)' },
+  { key: 'ruteo.view_all', label: 'Ver los ruteos de todo el negocio' },
   { key: 'reports.view_all', label: 'Ver reportes de todo el negocio' },
   { key: 'loans.view_all', label: 'Ver los préstamos de todo el negocio (no puede cobrarlos, solo verlos)' },
   { key: 'cash_sessions.view_all', label: 'Ver las cajas de todo el negocio (no solo la suya)' }
