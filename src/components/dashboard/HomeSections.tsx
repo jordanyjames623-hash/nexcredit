@@ -117,13 +117,15 @@ export function TodayCollections({ rows }: { rows: CalendarRow[] }) {
             const wa = digits(c?.whatsapp ?? phone)
             return (
               <article key={`${r.loan_id}-${r.installment_number}`} className="glass-card flex items-center gap-3 !rounded-2xl p-3">
-                <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+            <Link to={`/clientes/${r.client_id}`} aria-label={`Ver perfil de ${r.client_name}`} className="flex min-w-0 flex-1 items-center gap-3">
+              <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
                   {initials(r.client_name)}
                 </span>
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-content">{r.client_name}</p>
                   <p className="truncate text-xs text-content-muted">Cuota {r.installment_number} · PR-{r.loan_number}</p>
                 </div>
+            </Link>
                 <div className="flex shrink-0 items-center gap-1.5">
                   {phone && (
                     <a href={`tel:+${phone}`} aria-label={`Llamar a ${r.client_name}`} className="flex h-9 w-9 items-center justify-center rounded-full bg-primary/10 text-primary transition-colors hover:bg-primary/20">
