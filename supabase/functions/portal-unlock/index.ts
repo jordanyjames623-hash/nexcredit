@@ -10,11 +10,12 @@ import { createClient } from 'npm:@supabase/supabase-js@2'
 //                              "whatsapp:+1XXXXXXXXXX" (requiere el servicio de WhatsApp de Twilio
 //                              activado y el número del cliente ya "opt-in" según las reglas de Meta)
 //
-// Por defecto envía por SMS (más simple de poner en marcha: no requiere que el cliente le escriba
+// Por defecto envía por SMS (más simple de poner en marcha: no requiere que el cliente le escriba antes
 // al número de Twilio, a diferencia de WhatsApp). Para cambiar a WhatsApp, basta con que TWILIO_FROM
 // empiece con "whatsapp:" — el código ya lo detecta solo, sin tocar nada más.
 //
 // Mientras no existan los 3 secretos, esta función responde con un error claro en vez de fallar feo.
+
 const CORS_HEADERS = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'content-type',
@@ -57,7 +58,6 @@ Deno.serve(async (req) => {
   if (req.method !== 'POST') return json({ error: 'Método no permitido' }, 405)
 
   let body: any
-
   try { body = await req.json() } catch { return json({ error: 'JSON inválido' }, 400) }
   const { document_id } = body
   if (!document_id || typeof document_id !== 'string') return json({ error: 'Falta la cédula' }, 400)
