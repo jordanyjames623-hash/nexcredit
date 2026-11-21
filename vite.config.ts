@@ -35,28 +35,11 @@ export default defineConfig({
           { src: 'icon-512-maskable.png', sizes: '512x512', type: 'image/png', purpose: 'maskable' }
         ]
       },
-      workbox: {
-        navigateFallback: '/index.html',
-        runtimeCaching: [
-          {
-            // Solo lecturas GET a la API de Supabase se cachean para consulta offline.
-            urlPattern: ({ request, url }) => {
-              if (request.method !== 'GET' || !url.hostname.endsWith('.supabase.co')) return false
-              if (!url.pathname.startsWith('/rest/v1/')) return false
-              const excluded = ['api_keys', 'backup_jobs', 'export_business_backup', 'get_my_business_nextex_identity']
-              if (excluded.some((s) => url.pathname.includes(s) || url.search.includes(s))) return false
-              return true
-            },
-            handler: 'NetworkFirst',
-            options: {
-              cacheName: 'capitalia-reads',
-              networkTimeoutSeconds: 4,
-              expiration: { maxEntries: 200, maxAgeSeconds: 60 * 60 * 24 },
-              cacheableResponse: { statuses: [0, 200] }
-            }
-          }
-        ]
-      }
+      // injectManifest: el service worker propio (src/sw.ts) cachea las lecturas
+      // igual que antes y además muestra las notificaciones push.
+      strategies: 'injectManifest',
+      srcDir: 'src',
+      filename: 'sw.ts'
     })
   ],
   build: {
