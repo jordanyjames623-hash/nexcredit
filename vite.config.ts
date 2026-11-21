@@ -39,12 +39,14 @@ export default defineConfig({
         navigateFallback: '/index.html',
         runtimeCaching: [
           {
-            // Solo lecturas GET a la API REST de Supabase (excluyendo llaves, backups y secretos) se cachean para consulta offline.
-            urlPattern: ({ url, request }) =>
-              request.method === 'GET' &&
-              url.hostname.endsWith('.supabase.co') &&
-              url.pathname.startsWith('/rest/v1/') &&
-              !/\/(api_keys|backup_jobs|export_business_backup|get_my_business_nextex_identity)\b/.test(url.pathname),
+            // Solo lecturas GET a la API de Supabase se cachean para consulta offline.
+            urlPattern: ({ request, url }) => {
+              if (request.method !== 'GET' || !url.hostname.endsWith('.supabase.co')) return false
+              if (!url.pathname.startsWith('/rest/v1/')) return false
+              const excluded = ['api_keys', 'backup_jobs', 'export_business_backup', 'get_my_business_nextex_identity']
+              if (excluded.some((s) => url.pathname.includes(s) || url.search.includes(s))) return false
+              return true
+            },
             handler: 'NetworkFirst',
             options: {
               cacheName: 'capitalia-reads',

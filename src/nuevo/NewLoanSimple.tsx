@@ -10,6 +10,7 @@ import { UpgradeToProModal, parsePlanLimitError } from '@/components/UpgradeToPr
 import { RiskProfile } from '@/pages/ClientDetail'
 import { shortDate } from '@/lib/format'
 import { money0, freqStep, FREQ_LABEL } from './lib'
+import { getFileExtension, isAllowedUpload } from '@/lib/fileValidation'
 
 // Nuevo prestamo con TODAS las opciones viejas, en 4 pasos con el aspecto actual (como el
 // asistente viejo): 1 Cliente, 2 Prestamo (+ mora), 3 Evaluacion (+ garantia), 4 Resumen.
@@ -250,15 +251,11 @@ export function NewLoanSimple() {
       if (hasCollateral) {
         let imagePath: string | null = null
         if (collateralPhoto) {
-          const ext = collateralPhoto.name.split('.').pop()?.toLowerCase() || ''
-          if (!['png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
-            uploadErrorMessage = 'Solo se permiten imágenes PNG, JPG o WEBP.'
-          } else {
-            const path = `${data}/${Date.now()}.${ext}`
-            const { error: uploadError } = await supabase.storage.from('collateral').upload(path, collateralPhoto)
-            if (!uploadError) imagePath = path
-            else uploadErrorMessage = uploadError.message
-          }
+          const ext = getFileExtension(collateralPhoto.name) || 'jpg'
+          const path = `${data}/${Date.now()}.${ext}`
+          const { error: uploadError } = await supabase.storage.from('collateral').upload(path, collateralPhoto)
+          if (!uploadError) imagePath = path
+          else uploadErrorMessage = uploadError.message
         }
         await supabase.from('loans').update({
           has_collateral: true,
@@ -300,8 +297,7 @@ export function NewLoanSimple() {
     if (isCapital && (!termInstallments || Number(termInstallments) < 1)) { setError('Escribe el número de cuotas.'); return }
     if (!firstPaymentDate) { setError('Elige la fecha del primer pago.'); return }
     if (hasCollateral && collateralPhoto) {
-      const ext = collateralPhoto.name.split('.').pop()?.toLowerCase() || ''
-      if (!['png', 'jpg', 'jpeg', 'webp'].includes(ext)) { setError('La foto de la garantía debe ser PNG, JPG o WEBP.'); return }
+  if (!isAllowedUpload(collateralPhoto, ['png', 'jpg', 'jpeg', 'webp'], ['image/png', 'image/jpeg', 'image/webp'])) { setError('La foto de la garantía debe ser PNG, JPG o WEBP.'); return }
       if (collateralPhoto.size > 5 * 1024 * 1024) { setError('La foto de la garantía no puede pesar más de 5 MB.'); return }
     }
     createLoan.mutate()

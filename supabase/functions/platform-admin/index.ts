@@ -14,6 +14,19 @@ const CORS_HEADERS = {
 function json(body: unknown, status = 200) {
   return new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json', ...CORS_HEADERS } })
 }
+// Lee el claim `aal` del JWT del llamador (sin verificar la firma: la firma ya
+// la verificó asCaller.auth.getUser). Devuelve null si no se puede leer.
+function jwtAal(authHeader: string): string | null {
+  try {
+    const token = authHeader.replace(/^Bearer\s+/i, '')
+    const part = token.split('.')[1]
+    const normalized = part.replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(normalized)) as { aal?: unknown }
+    return typeof payload.aal === 'string' ? payload.aal : null
+  } catch {
+    return null
+  }
+}
 
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') return new Response('ok', { headers: CORS_HEADERS })
@@ -41,6 +54,17 @@ Deno.serve(async (req) => {
 
   const { data: profile } = await admin.from('profiles').select('is_platform_admin').eq('id', user.id).single()
   if (!profile?.is_platform_admin) return json({ error: 'Solo el administrador de la plataforma puede hacer esto' }, 403)
+  // Si el administrador de la plataforma tiene un factor TOTP verificado, el
+  // token con el que llama debe ser aal2 (haber pasado el reto).
+  {
+    const { data: factors } = await admin.auth.mfa.listFactors({ userId: user.id })
+    const hasVerifiedTotp = (factors?.factors ?? []).some(
+      (f) => f.factor_type === 'totp' && f.status === 'verified',
+    )
+    if (hasVerifiedTotp && jwtAal(authHeader) !== 'aal2') {
+      return json({ error: 'Se requiere verificación de dos factores (MFA)' }, 403)
+    }
+  }
 
   if (action === 'reset_owner_password') {
     if (!business_id || !new_password) return json({ error: 'Faltan datos' }, 400)

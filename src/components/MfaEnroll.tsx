@@ -70,10 +70,8 @@ export function MfaEnroll({ onDone }: { onDone: () => void }) {
       <p className="text-sm text-content-muted">
         Escanea este código con tu app autenticadora y escribe el código de 6 dígitos que muestra.
       </p>
-      {qr.startsWith('data:') ? (
-        <img src={qr} alt="Código QR para la app autenticadora" className="mx-auto block w-48 rounded bg-white p-2" />
-      ) : qr.startsWith('<') ? (
-        <img src={`data:image/svg+xml;utf8,${encodeURIComponent(qr)}`} alt="Código QR para la app autenticadora" className="mx-auto block w-48 rounded bg-white p-2" />
+      {qr ? (
+        <img src={qr.startsWith('data:') ? qr : `data:image/svg+xml;utf8,${encodeURIComponent(qr)}`} alt="Código QR para la app autenticadora" className="mx-auto block w-48 rounded bg-white p-2" />
       ) : null}
       {enrollment && (
         <div className="space-y-2">

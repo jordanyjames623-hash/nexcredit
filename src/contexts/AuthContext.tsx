@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
-import { setPaymentQueueUser } from '@/lib/paymentQueue'
+import { setPaymentQueueIdentity } from '@/lib/paymentQueue'
 
 type Membership = {
   business_id: string
@@ -93,7 +93,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return
       setSession(data.session)
-      setPaymentQueueUser(data.session?.user.id ?? null)
       if (data.session) {
         await loadAll(data.session.user.id)
       } else {
@@ -104,7 +103,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, next) => {
       setSession(next)
-      setPaymentQueueUser(next?.user.id ?? null)
       if (next) {
         await loadAll(next.user.id)
       } else {
@@ -119,6 +117,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
+  // La cola offline solo muestra y sincroniza los pagos del usuario y negocio activos.
+  useEffect(() => {
+    setPaymentQueueIdentity(session?.user.id ?? null, membership?.business_id ?? null)
+  }, [session, membership])
 
   const isOwner = membership?.role === 'owner'
 

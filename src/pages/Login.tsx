@@ -5,6 +5,7 @@ import { supabase } from '@/lib/supabase'
 import { reportToNextex } from '@/lib/nextexRelay'
 import { MfaChallenge } from '@/components/MfaChallenge'
 import { getVerifiedTotpFactorId } from '@/lib/mfa'
+import { useAuth } from '@/contexts/AuthContext'
 
 type Role = 'owner' | 'collaborator'
 
@@ -17,6 +18,7 @@ export function Login() {
   const [busy, setBusy] = useState(false)
   // SEC-007: si la cuenta tiene un factor TOTP verificado, tras la contraseña se pide el código.
   const [challengeFactorId, setChallengeFactorId] = useState<string | null>(null)
+  const { signOut } = useAuth()
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
@@ -48,13 +50,13 @@ export function Login() {
     setBusy(false)
 
     if (memberError || !member) {
-      await supabase.auth.signOut()
+      await signOut()
       setError('No se pudo verificar tu cuenta. Intenta de nuevo.')
       return
     }
 
     if (member.role !== role) {
-      await supabase.auth.signOut()
+      await signOut()
       setError(
         role === 'owner'
           ? 'Esta cuenta es de un colaborador, no de un propietario. Selecciona "Soy Colaborador" para entrar.'
@@ -67,14 +69,14 @@ export function Login() {
     // verificado, el segundo código es obligatorio antes de entrar.
     const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
     if (!aal) {
-      await supabase.auth.signOut()
+      await signOut()
       setError('No se pudo verificar el segundo factor. Intenta de nuevo.')
       return
     }
     if (aal.nextLevel === 'aal2') {
       const factorId = await getVerifiedTotpFactorId()
       if (!factorId) {
-        await supabase.auth.signOut()
+        await signOut()
         setError('Tu cuenta exige un segundo factor, pero no se encontró ninguno activo. Intenta de nuevo.')
         return
       }
@@ -96,7 +98,7 @@ export function Login() {
             factorId={challengeFactorId}
             onVerified={() => navigate('/', { replace: true })}
             onCancel={async () => {
-              await supabase.auth.signOut()
+              await signOut()
               setChallengeFactorId(null)
               setPassword('')
             }}

@@ -65,7 +65,7 @@ Deno.serve(async (req) => {
   const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
   const { data, error } = await admin.rpc('generate_portal_unlock_code', { p_document_id: document_id })
   if (error) return json({ error: 'No se pudo generar el código' }, 500)
-  if (!data?.ok) return json({ error: data?.message ?? 'No se pudo generar el código' }, 400)
+  if (!data?.ok) return json({ error: 'Si la cédula tiene acceso al portal y un teléfono registrado, recibirás el código en unos minutos.' }, 400)
 
   const sent = await sendViaTwilio(data.phone, `Tu código para recuperar el acceso es: ${data.code} (vence en 10 minutos).`)
   if (!sent.ok) return json({ error: sent.message }, 502)

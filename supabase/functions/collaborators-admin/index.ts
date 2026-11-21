@@ -1,3 +1,14 @@
+// collaborators-admin v5 — Seguridad (2026-11-20).
+// Cambios respecto a la v4 (Fase 4A):
+// 1. REAUTENTICACIÓN: `create` y `reset_password` ahora exigen `body.password`
+//    (la contraseña actual del dueño/gerente que el frontend ya enviaba y la v4
+//    ignoraba). Se verifica con un cliente verificador (anon key) vía
+//    signInWithPassword; si falla → 401 'Tu contraseña actual es incorrecta'.
+// 2. AAL2: si el llamador es dueño y tiene un factor TOTP verificado, el JWT con
+//    el que llama debe ser aal2; un token aal1 (solo contraseña) → 403.
+// 3. reset_password: tras cambiar la contraseña se cierran TODAS las sesiones
+//    del colaborador (signOut global), para que no quede una sesión huérfana
+//    con la contraseña vieja.
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2'
 
 const corsHeaders = {
@@ -31,6 +42,18 @@ function getBearer(req: Request): string | null {
   return auth.startsWith('Bearer ') ? auth.slice(7) : null
 }
 
+// Lee el claim `aal` del JWT del llamador (sin verificar la firma: la firma ya
+// la verificó admin.auth.getUser). Devuelve null si no se puede leer.
+function jwtAal(token: string): string | null {
+  try {
+    const part = token.split('.')[1]
+    const normalized = part.replace(/-/g, '+').replace(/_/g, '/')
+    const payload = JSON.parse(atob(normalized)) as { aal?: unknown }
+    return typeof payload.aal === 'string' ? payload.aal : null
+  } catch {
+    return null
+  }
+}
 Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders })
@@ -49,6 +72,17 @@ Deno.serve(async (req) => {
   const callerPerms = (membership.permissions ?? {}) as Record<string, boolean>
   const isManager = !isOwner && membership.role === 'collaborator' && callerPerms['employees.manage'] === true
   if (!isOwner && !isManager) return json({ error: 'Solo el propietario o un gerente' }, 403)
+  // Si el dueño tiene un factor TOTP verificado, el token con el que llama debe
+  // ser aal2 (haber pasado el reto). Un token aal1 no basta para gestionar empleados.
+  if (isOwner) {
+    const { data: factors } = await admin.auth.mfa.listFactors({ userId: user.id })
+    const hasVerifiedTotp = (factors?.factors ?? []).some(
+      (f) => f.factor_type === 'totp' && f.status === 'verified',
+    )
+    if (hasVerifiedTotp && jwtAal(token) !== 'aal2') {
+      return json({ error: 'Se requiere verificación de dos factores (MFA)' }, 403)
+    }
+  }
   const businessId = membership.business_id as string
   let body: Record<string, unknown> = {}
   try {
@@ -65,6 +99,23 @@ Deno.serve(async (req) => {
   if (reauthErr) return json({ error: 'Tu contraseña actual no es correcta' }, 401)
 
   const action = body.action as string | undefined
+  // Reautenticación obligatoria para crear empleados y resetear contraseñas:
+  // el frontend ya enviaba `password` (la contraseña actual del llamador) y se
+  // ignoraba. Se verifica sin crear sesión en el navegador, solo confirma que
+  // quien llama sabe la contraseña actual.
+  if (action === 'create' || action === 'reset_password') {
+    const password = body.password
+    if (typeof password !== 'string' || !password.trim()) {
+      return json({ error: 'Falta confirmar tu contraseña' }, 400)
+    }
+    if (!user.email) return json({ error: 'No autenticado' }, 401)
+    const verifier = createClient(supabaseUrl, anonKey)
+    const { error: reauthErr } = await verifier.auth.signInWithPassword({
+      email: user.email,
+      password: String(password),
+    })
+    if (reauthErr) return json({ error: 'Tu contraseña actual es incorrecta' }, 401)
+  }
   if (action === 'create') {
     const { email, full_name, permissions, new_password } = body as {
       email: string; full_name?: string; permissions?: unknown; new_password?: string
@@ -112,9 +163,14 @@ Deno.serve(async (req) => {
     if (isManager && target.created_by !== user.id) {
       return json({ error: 'Un gerente solo puede resetear la contraseña de sus subordinados' }, 403)
     }
-    const { error } = await admin.auth.admin.updateUserById(user_id as string, { password: new_password })
+    if (!user_id || typeof user_id !== 'string') {
+      return json({ error: 'Colaborador no encontrado' }, 404)
+    }
+    const { error } = await admin.auth.admin.updateUserById(user_id, { password: new_password })
     if (error) return json({ error: error.message }, 400)
-    await admin.auth.admin.signOut(user_id as string, 'global').catch(() => {})
+    // Cerrar cualquier sesión que el colaborador tuviera abierta — una contraseña
+    // nueva no debe convivir con una sesión vieja ya iniciada con la anterior.
+    await admin.auth.admin.signOut(user_id, 'global').catch(() => {})
     return json({ ok: true })
   }
   return json({ error: 'Acción no reconocida' }, 400)

@@ -11,7 +11,6 @@ import { queryClient } from './queryClient'
 
 export type QueuedPayment = {
   id: string
-  user_id?: string
   idempotency_key: string
   loan_id: string
   loan_number: number
@@ -23,6 +22,8 @@ export type QueuedPayment = {
   late_fee: number
   payment_method: string
   notes: string | null
+  user_id?: string;
+  business_id?: string;
   queued_at: string
   status: 'pending' | 'syncing' | 'failed'
   error_message?: string
@@ -30,10 +31,11 @@ export type QueuedPayment = {
 
 const KEY = 'capitalia_payment_queue'
 const EVENT = 'capitalia-payment-queue-changed'
-let activeUserId: string | null = null
-
-export function setPaymentQueueUser(userId: string | null) {
-  activeUserId = userId
+// Identidad de la sesión activa; la pone AuthContext cuando cambia la sesión.
+// La cola nunca muestra ni sincroniza pagos de otro usuario o negocio.
+let currentIdentity: { userId: string | null; businessId: string | null } = { userId: null, businessId: null }
+export function setPaymentQueueIdentity(userId: string | null, businessId: string | null) {
+  currentIdentity = { userId, businessId }
   window.dispatchEvent(new Event(EVENT))
 }
 
@@ -46,9 +48,10 @@ function write(items: QueuedPayment[]) {
 }
 
 export function listQueue(): QueuedPayment[] {
-  if (!activeUserId) return []
+  const { userId, businessId } = currentIdentity
+  if (!userId || !businessId) return []
   return read()
-    .filter((i) => !i.user_id || i.user_id === activeUserId)
+    .filter((p) => p.user_id === userId && p.business_id === businessId)
     .sort((a, b) => a.queued_at.localeCompare(b.queued_at))
 }
 
@@ -61,7 +64,7 @@ export function subscribeQueue(callback: () => void): () => void {
 export function enqueuePayment(item: Omit<QueuedPayment, 'id' | 'status' | 'queued_at'>): string {
   const id = crypto.randomUUID()
   const items = read()
-  items.push({ ...item, user_id: item.user_id ?? activeUserId ?? undefined, id, status: 'pending', queued_at: new Date().toISOString() })
+  items.push({ ...item, id, status: 'pending', queued_at: new Date().toISOString(), user_id: currentIdentity.userId ?? undefined, business_id: currentIdentity.businessId ?? undefined })
   write(items)
   return id
 }
