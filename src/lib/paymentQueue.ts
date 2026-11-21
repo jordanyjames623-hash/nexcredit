@@ -22,6 +22,8 @@ export type QueuedPayment = {
   late_fee: number
   payment_method: string
   notes: string | null
+  user_id?: string;
+  business_id?: string;
   queued_at: string
   status: 'pending' | 'syncing' | 'failed'
   error_message?: string
@@ -29,6 +31,12 @@ export type QueuedPayment = {
 
 const KEY = 'capitalia_payment_queue'
 const EVENT = 'capitalia-payment-queue-changed'
+// Identidad de la sesión activa; la pone AuthContext cuando cambia la sesión.
+// La cola nunca muestra ni sincroniza pagos de otro usuario o negocio.
+let currentIdentity: { userId: string | null; businessId: string | null } = { userId: null, businessId: null }
+export function setPaymentQueueIdentity(userId: string | null, businessId: string | null) {
+  currentIdentity = { userId, businessId }
+}
 
 function read(): QueuedPayment[] {
   try { return JSON.parse(localStorage.getItem(KEY) ?? '[]') } catch { return [] }
@@ -39,7 +47,11 @@ function write(items: QueuedPayment[]) {
 }
 
 export function listQueue(): QueuedPayment[] {
-  return read().sort((a, b) => a.queued_at.localeCompare(b.queued_at))
+  const { userId, businessId } = currentIdentity
+  if (!userId || !businessId) return []
+  return read()
+    .filter((p) => p.user_id === userId && p.business_id === businessId)
+    .sort((a, b) => a.queued_at.localeCompare(b.queued_at))
 }
 
 export function subscribeQueue(callback: () => void): () => void {
@@ -51,7 +63,7 @@ export function subscribeQueue(callback: () => void): () => void {
 export function enqueuePayment(item: Omit<QueuedPayment, 'id' | 'status' | 'queued_at'>): string {
   const id = crypto.randomUUID()
   const items = read()
-  items.push({ ...item, id, status: 'pending', queued_at: new Date().toISOString() })
+  items.push({ ...item, id, status: 'pending', queued_at: new Date().toISOString(), user_id: currentIdentity.userId ?? undefined, business_id: currentIdentity.businessId ?? undefined })
   write(items)
   return id
 }
