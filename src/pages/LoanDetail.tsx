@@ -11,6 +11,7 @@ import { money, shortDate } from '@/lib/format'
 import { useOnlineStatus } from '@/hooks/useOnlineStatus'
 import { useAuth } from '@/contexts/AuthContext'
 import { Receipt, type ReceiptData } from '@/components/Receipt'
+import { getFileExtension, isAllowedUpload } from '@/lib/fileValidation'
 
 type LoanRow = {
   id: string; client_id: string; loan_number: number; status: string; loan_type: string
@@ -504,8 +505,9 @@ function CollateralEditor({ loan, onSaved }: { loan: LoanRow; onSaved: () => voi
     e.target.value = ''
     if (!file) return
     if (file.size > 5 * 1024 * 1024) { setError('La imagen no puede pesar más de 5 MB.'); return }
+    if (!isAllowedUpload(file, ['png', 'jpg', 'jpeg', 'webp'], ['image/png', 'image/jpeg', 'image/webp'])) { setError('La foto de la garantía debe ser PNG, JPG o WEBP.'); return }
     setError(null); setUploading(true)
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
+    const ext = getFileExtension(file.name) || 'jpg'
     const path = `${loan.id}/${Date.now()}.${ext}`
     const { error: uploadError } = await supabase.storage.from('collateral').upload(path, file)
     if (uploadError) { setUploading(false); setError(uploadError.message); return }
@@ -524,7 +526,7 @@ function CollateralEditor({ loan, onSaved }: { loan: LoanRow; onSaved: () => voi
       ) : null}
       <label className="btn-secondary mt-2 inline-block cursor-pointer !px-3 !py-2 text-xs">
         {uploading ? 'Subiendo…' : loan.collateral_image_path ? 'Cambiar foto' : 'Agregar foto'}
-        <input type="file" accept="image/png,image/jpeg,image/webp,image/heic" className="hidden" onChange={handlePhoto} disabled={uploading} />
+        <input type="file" accept="image/png,image/jpeg,image/webp" className="hidden" onChange={handlePhoto} disabled={uploading} />
       </label>
     </div>
   )
