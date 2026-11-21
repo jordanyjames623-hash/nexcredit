@@ -15,8 +15,10 @@ const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 }
+
 const json = (body: unknown, status = 200) =>
   new Response(JSON.stringify(body), { status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } })
+
 const validPermissions = new Set([
   'routes.view', 'routes.view_all', 'routes.manage',
   'expenses.view', 'expenses.create', 'expenses.update', 'expenses.view_all',
@@ -25,6 +27,7 @@ const validPermissions = new Set([
   'reports.view_all', 'loans.view_all',
   'employees.manage',
 ])
+
 function sanitizePermissions(input: unknown): Record<string, boolean> {
   if (!input || typeof input !== 'object' || Array.isArray(input)) return {}
   const out: Record<string, boolean> = {}
@@ -33,10 +36,12 @@ function sanitizePermissions(input: unknown): Record<string, boolean> {
   }
   return out
 }
+
 function getBearer(req: Request): string | null {
   const auth = req.headers.get('Authorization') ?? ''
   return auth.startsWith('Bearer ') ? auth.slice(7) : null
 }
+
 // Lee el claim `aal` del JWT del llamador (sin verificar la firma: la firma ya
 // la verificó admin.auth.getUser). Devuelve null si no se puede leer.
 function jwtAal(token: string): string | null {
