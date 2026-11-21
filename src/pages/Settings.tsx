@@ -10,6 +10,7 @@ import { BranchesPanel } from '@/components/BranchesPanel'
 import { ApiKeysPanel } from '@/components/ApiKeysPanel'
 import { NextexConnectionPanel } from '@/components/NextexConnectionPanel'
 import { MfaSettings } from '@/components/MfaSettings'
+import { PushSettings } from '@/components/PushSettings'
 import { ProPitchContent, BusinessPitchContent } from '@/components/UpgradeToProModal'
 import { applyTheme, getTheme, type NcTheme } from '@/nuevo/theme'
 
@@ -117,6 +118,9 @@ export function Settings() {
             </div>
           )}
         </div>
+      </AccordionSection>
+      <AccordionSection id="notificaciones" title="Notificaciones" openId={openSection} setOpenId={setOpenSection}>
+        <PushSettings />
       </AccordionSection>
 
       {isOwner && (
