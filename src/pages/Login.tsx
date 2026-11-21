@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react'
+import { useEffect, useState, type FormEvent } from 'react'
 import { BrandMark } from '@/components/layout/BrandMark'
 import { Link, useNavigate } from 'react-router-dom'
 import { supabase } from '@/lib/supabase'
@@ -9,6 +9,9 @@ import { useAuth } from '@/contexts/AuthContext'
 
 type Role = 'owner' | 'collaborator'
 
+// Rol elegido antes de salir hacia Google: al volver, se verifica igual que con contraseña.
+const OAUTH_ROLE_KEY = 'nc_oauth_role'
+
 export function Login() {
   const navigate = useNavigate()
   const [role, setRole] = useState<Role | null>(null)
@@ -18,11 +21,60 @@ export function Login() {
   const [busy, setBusy] = useState(false)
   // SEC-007: si la cuenta tiene un factor TOTP verificado, tras la contraseña se pide el código.
   const [challengeFactorId, setChallengeFactorId] = useState<string | null>(null)
-  const { signOut } = useAuth()
+  const { session, signOut } = useAuth()
+
+  // Verifica que el rol real de la cuenta coincida con el elegido y, si la cuenta
+  // tiene un factor TOTP verificado, pide el segundo código. Devuelve true solo si
+  // ya se puede entrar sin más pasos.
+  async function verifyAccess(userId: string, expectedRole: Role): Promise<boolean> {
+    const { data: member, error: memberError } = await supabase
+      .from('business_members')
+      .select('role')
+      .eq('user_id', userId)
+      .maybeSingle()
+
+    if (memberError || !member) {
+      await signOut()
+      setError('No se pudo verificar tu cuenta. Intenta de nuevo.')
+      return false
+    }
+
+    if (member.role !== expectedRole) {
+      await signOut()
+      setError(
+        expectedRole === 'owner'
+          ? 'Esta cuenta es de un colaborador, no de un propietario. Selecciona "Soy Colaborador" para entrar.'
+          : 'Esta cuenta es de un propietario, no de un colaborador. Selecciona "Soy Propietario / Administrador" para entrar.'
+      )
+      return false
+    }
+
+    // SEC-007: la contraseña y el rol son correctos; si la cuenta tiene un factor TOTP
+    // verificado, el segundo código es obligatorio antes de entrar.
+    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
+    if (!aal) {
+      await signOut()
+      setError('No se pudo verificar el segundo factor. Intenta de nuevo.')
+      return false
+    }
+    if (aal.nextLevel === 'aal2') {
+      const factorId = await getVerifiedTotpFactorId()
+      if (!factorId) {
+        await signOut()
+        setError('Tu cuenta exige un segundo factor, pero no se encontró ninguno activo. Intenta de nuevo.')
+        return false
+      }
+      setChallengeFactorId(factorId)
+      return false
+    }
+
+    return true
+  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault()
     setError(null)
+    if (!role) return
     setBusy(true)
 
     const { data: signInData, error: signInError } = await supabase.auth.signInWithPassword({ email, password })
@@ -39,52 +91,40 @@ export function Login() {
       return
     }
 
-    // La contraseña es correcta; ahora verificamos que el rol real de la cuenta
-    // coincida con lo que la persona eligió en la pantalla anterior. Si no coincide,
-    // se rechaza el acceso y se cierra la sesión que se acaba de abrir.
-    const { data: member, error: memberError } = await supabase
-      .from('business_members')
-      .select('role')
-      .eq('user_id', signInData.user.id)
-      .maybeSingle()
+    const ok = await verifyAccess(signInData.user.id, role)
     setBusy(false)
+    if (ok) navigate('/', { replace: true })
+  }
 
-    if (memberError || !member) {
-      await signOut()
-      setError('No se pudo verificar tu cuenta. Intenta de nuevo.')
-      return
-    }
+  // Al volver de Google la sesión ya existe: se verifica el rol elegido y el
+  // segundo factor igual que con contraseña.
+  useEffect(() => {
+    if (!session?.user) return
+    const pendingRole = sessionStorage.getItem(OAUTH_ROLE_KEY) as Role | null
+    if (pendingRole !== 'owner' && pendingRole !== 'collaborator') return
+    sessionStorage.removeItem(OAUTH_ROLE_KEY)
+    setRole(pendingRole)
+    setBusy(true)
+    void verifyAccess(session.user.id, pendingRole).then((ok) => {
+      setBusy(false)
+      if (ok) navigate('/', { replace: true })
+    })
+  }, [session])
 
-    if (member.role !== role) {
-      await signOut()
-      setError(
-        role === 'owner'
-          ? 'Esta cuenta es de un colaborador, no de un propietario. Selecciona "Soy Colaborador" para entrar.'
-          : 'Esta cuenta es de un propietario, no de un colaborador. Selecciona "Soy Propietario / Administrador" para entrar.'
-      )
-      return
+  async function handleGoogle() {
+    if (!role) return
+    setError(null)
+    setBusy(true)
+    sessionStorage.setItem(OAUTH_ROLE_KEY, role)
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: 'google',
+      options: { redirectTo: `${window.location.origin}/entrar` },
+    })
+    if (error) {
+      sessionStorage.removeItem(OAUTH_ROLE_KEY)
+      setBusy(false)
+      setError('No se pudo iniciar el acceso con Google. Intenta de nuevo.')
     }
-
-    // SEC-007: la contraseña y el rol son correctos; si la cuenta tiene un factor TOTP
-    // verificado, el segundo código es obligatorio antes de entrar.
-    const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel()
-    if (!aal) {
-      await signOut()
-      setError('No se pudo verificar el segundo factor. Intenta de nuevo.')
-      return
-    }
-    if (aal.nextLevel === 'aal2') {
-      const factorId = await getVerifiedTotpFactorId()
-      if (!factorId) {
-        await signOut()
-        setError('Tu cuenta exige un segundo factor, pero no se encontró ninguno activo. Intenta de nuevo.')
-        return
-      }
-      setChallengeFactorId(factorId)
-      return
-    }
-
-    navigate('/', { replace: true })
   }
 
   if (challengeFactorId) {
@@ -181,6 +221,11 @@ export function Login() {
             <Link to="/recuperar" className="text-content-muted hover:underline">¿Olvidaste tu contraseña?</Link>
           </p>
         </form>
+
+        <p className="mt-6 mb-3 text-center text-xs text-on-navy/50">o continúa con</p>
+        <button type="button" onClick={handleGoogle} disabled={busy} className="w-full glass-panel glass-strong !rounded-2xl px-4 py-4 text-base font-semibold text-content transition-transform hover:-translate-y-0.5 disabled:opacity-60">
+          Continuar con Google
+        </button>
 
         {role === 'owner' && (
           <p className="mt-6 text-center text-sm text-on-navy/60">
