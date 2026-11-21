@@ -191,7 +191,7 @@ export function Contracts() {
     e.target.value = ''
     if (!file || !business?.id) return
     if (!isAllowedUpload(file, ['pdf', 'png', 'jpg', 'jpeg', 'webp'], ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'])) {
-      toast.error('Solo se permiten archivos PDF, PNG, JPG o WEBP.')
+      setActionError('Solo se permiten archivos PDF, PNG, JPG o WEBP.')
       return
     }
     if (file.size > 10 * 1024 * 1024) { setActionError('El archivo no puede pesar más de 10 MB.'); return }
