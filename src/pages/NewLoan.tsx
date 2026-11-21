@@ -12,6 +12,7 @@ import { PageHeader } from '@/components/ui/PageHeader'
 import { Stepper, type Step } from '@/components/ui/Stepper'
 import { FormSection } from '@/components/ui/FormSection'
 import { RiskProfile } from '@/pages/ClientDetail'
+import { getFileExtension, isAllowedUpload } from '@/lib/fileValidation'
 
 type ScheduleRow = { number: number; due_date: string; principal_due: number; interest_due: number }
 
@@ -179,7 +180,7 @@ export function NewLoan() {
       if (hasCollateral) {
         let imagePath: string | null = null
         if (collateralPhoto) {
-          const ext = collateralPhoto.name.split('.').pop()?.toLowerCase() || 'jpg'
+          const ext = getFileExtension(collateralPhoto.name) || 'jpg'
           const path = `${data}/${Date.now()}.${ext}`
           const { error: uploadError } = await supabase.storage.from('collateral').upload(path, collateralPhoto)
           if (!uploadError) imagePath = path
@@ -256,6 +257,10 @@ export function NewLoan() {
       return
     }
     if (!clientId) { setError('Selecciona un cliente.'); setStep(0); return }
+    if (hasCollateral && collateralPhoto) {
+      if (!isAllowedUpload(collateralPhoto, ['png', 'jpg', 'jpeg', 'webp'], ['image/png', 'image/jpeg', 'image/webp'])) { setError('La foto de la garantía debe ser PNG, JPG o WEBP.'); return }
+      if (collateralPhoto.size > 5 * 1024 * 1024) { setError('La foto de la garantía no puede pesar más de 5 MB.'); return }
+    }
     createLoan.mutate()
   }
 
@@ -449,7 +454,7 @@ export function NewLoan() {
                         <input type="number" className="field-input money" placeholder="Valor estimado (RD$)" aria-label="Valor estimado de la garantía" value={collateralValue} onChange={(e) => setCollateralValue(e.target.value)} />
                         <label className="field-label mb-0 sm:col-span-2">
                           Foto de la garantía (opcional)
-                          <input type="file" accept="image/png,image/jpeg,image/webp,image/heic" className="field-input mt-1"
+                          <input type="file" accept="image/png,image/jpeg,image/webp" className="field-input mt-1"
                             onChange={(e) => setCollateralPhoto(e.target.files?.[0] ?? null)} />
                         </label>
                       </div>
