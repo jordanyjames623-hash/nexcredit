@@ -99,23 +99,6 @@ Deno.serve(async (req) => {
   if (reauthErr) return json({ error: 'Tu contraseña actual no es correcta' }, 401)
 
   const action = body.action as string | undefined
-  // Reautenticación obligatoria para crear empleados y resetear contraseñas:
-  // el frontend ya enviaba `password` (la contraseña actual del llamador) y se
-  // ignoraba. Se verifica sin crear sesión en el navegador, solo confirma que
-  // quien llama sabe la contraseña actual.
-  if (action === 'create' || action === 'reset_password') {
-    const password = body.password
-    if (typeof password !== 'string' || !password.trim()) {
-      return json({ error: 'Falta confirmar tu contraseña' }, 400)
-    }
-    if (!user.email) return json({ error: 'No autenticado' }, 401)
-    const verifier = createClient(supabaseUrl, anonKey)
-    const { error: reauthErr } = await verifier.auth.signInWithPassword({
-      email: user.email,
-      password: String(password),
-    })
-    if (reauthErr) return json({ error: 'Tu contraseña actual es incorrecta' }, 401)
-  }
   if (action === 'create') {
     const { email, full_name, permissions, new_password } = body as {
       email: string; full_name?: string; permissions?: unknown; new_password?: string
