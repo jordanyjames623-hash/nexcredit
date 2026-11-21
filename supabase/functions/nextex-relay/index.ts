@@ -65,7 +65,13 @@ Deno.serve(async (req: Request) => {
   const headers = corsHeaders(req.headers.get('origin'))
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers })
   if (req.method !== 'POST') return json(405, { ok: false, error: 'method_not_allowed' }, headers)
-  const siteKey = Deno.env.get('NEXTEX_SITE_KEY') ?? ''
+
+  const siteKey = Deno.env.get('NEXTEX_SITE_KEY')
+  if (!siteKey) {
+    console.error('[nextex-relay] NEXTEX_SITE_KEY no configurado en los secrets de la función.')
+    return json(500, { ok: false, error: 'server_misconfigured' }, headers)
+  }
+
   let body: unknown
   try {
     body = await req.json()
@@ -78,6 +84,7 @@ Deno.serve(async (req: Request) => {
     return json(400, { ok: false, error: 'unknown_type' }, headers)
   }
   if (!isObject(payload)) return json(400, { ok: false, error: 'invalid_payload' }, headers)
+
   // Las métricas alimentan los números financieros de Nextex: solo un usuario
   // real, miembro activo de un negocio, puede enviarlas. La anon key pública
   // no basta (un tercero podría adulterar las métricas).
@@ -122,6 +129,7 @@ Deno.serve(async (req: Request) => {
       date: typeof payload.date === 'string' ? payload.date : undefined,
     }
   }
+
   let res: Response
   try {
     res = await fetch(`${NEXTTEX_BASE}${ROUTES[type]}`, {
