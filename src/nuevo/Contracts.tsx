@@ -4,6 +4,7 @@ import { supabase } from '@/lib/supabase'
 import { useAuth } from '@/contexts/AuthContext'
 import { money0 } from './lib'
 import { GreetingHeader } from './GreetingHeader'
+import { getFileExtension, isAllowedUpload } from '@/lib/fileValidation'
 
 // Contratos: crear (legal o informal, con el texto generado en pantalla antes de
 // guardar), lista con su estado, subida del firmado (PDF o foto) y vista del
@@ -189,10 +190,14 @@ export function Contracts() {
     const file = e.target.files?.[0]
     e.target.value = ''
     if (!file || !business?.id) return
+    if (!isAllowedUpload(file, ['pdf', 'png', 'jpg', 'jpeg', 'webp'], ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'])) {
+      toast.error('Solo se permiten archivos PDF, PNG, JPG o WEBP.')
+      return
+    }
     if (file.size > 10 * 1024 * 1024) { setActionError('El archivo no puede pesar más de 10 MB.'); return }
     setUploadingId(c.id)
     setActionError(null)
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'pdf'
+    const ext = getFileExtension(file.name) || 'pdf'
     const path = `${business.id}/${c.id}/${Date.now()}.${ext}`
     const { error: upErr } = await supabase.storage.from('contratos').upload(path, file)
     if (upErr) { setUploadingId(null); setActionError('No se pudo subir el firmado: ' + upErr.message); return }
@@ -222,10 +227,14 @@ export function Contracts() {
   // Ahora abre el contrato en una pestana nueva como documento imprimible, con su
   // propio boton Imprimir (el dialogo lo abre el navegador de esa pestana).
   function printContract(c: ContractRow, clientName: string) {
-    const doc = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Contrato - ${escapeHtml(clientName)}</title><style>body{font-family:Georgia,serif;color:#000;background:#fff;margin:24px}pre{white-space:pre-wrap;font-family:Georgia,serif;font-size:14px;line-height:1.5}@media print{.print-btn{display:none}}</style></head><body><button class="print-btn" onclick="window.print()">Imprimir / PDF</button><pre>${escapeHtml(c.body)}</pre><script>window.print()</script></body></html>`
+    const doc = `<!doctype html><html lang="es"><head><meta charset="utf-8"><title>Contrato - ${escapeHtml(clientName)}</title><style>body{font-family:Georgia,serif;color:#000;background:#fff;margin:24px}pre{white-space:pre-wrap;font-family:Georgia,serif;font-size:14px;line-height:1.5}@media print{.print-btn{display:none}}</style></head><body><button class="print-btn">Imprimir / PDF</button><pre>${escapeHtml(c.body)}</pre></body></html>`
     const blob = new Blob([doc], { type: 'text/html' })
     const url = URL.createObjectURL(blob)
-    window.open(url, '_blank')
+    const win = window.open(url, '_blank')
+    win?.addEventListener('load', () => {
+      win.document.querySelector('.print-btn')?.addEventListener('click', () => win.print())
+      win.print()
+    })
   }
 
   const field = 'w-full rounded-xl bg-[var(--nc-soft)] px-4 py-3 text-sm text-[var(--nc-text)] outline-none placeholder:text-[var(--nc-faint)] focus:ring-2 focus:ring-[#2563EB]'
