@@ -11,6 +11,7 @@ import { queryClient } from './queryClient'
 
 export type QueuedPayment = {
   id: string
+  user_id?: string
   idempotency_key: string
   loan_id: string
   loan_number: number
@@ -29,6 +30,12 @@ export type QueuedPayment = {
 
 const KEY = 'capitalia_payment_queue'
 const EVENT = 'capitalia-payment-queue-changed'
+let activeUserId: string | null = null
+
+export function setPaymentQueueUser(userId: string | null) {
+  activeUserId = userId
+  window.dispatchEvent(new Event(EVENT))
+}
 
 function read(): QueuedPayment[] {
   try { return JSON.parse(localStorage.getItem(KEY) ?? '[]') } catch { return [] }
@@ -39,7 +46,10 @@ function write(items: QueuedPayment[]) {
 }
 
 export function listQueue(): QueuedPayment[] {
-  return read().sort((a, b) => a.queued_at.localeCompare(b.queued_at))
+  if (!activeUserId) return []
+  return read()
+    .filter((i) => !i.user_id || i.user_id === activeUserId)
+    .sort((a, b) => a.queued_at.localeCompare(b.queued_at))
 }
 
 export function subscribeQueue(callback: () => void): () => void {
@@ -51,7 +61,7 @@ export function subscribeQueue(callback: () => void): () => void {
 export function enqueuePayment(item: Omit<QueuedPayment, 'id' | 'status' | 'queued_at'>): string {
   const id = crypto.randomUUID()
   const items = read()
-  items.push({ ...item, id, status: 'pending', queued_at: new Date().toISOString() })
+  items.push({ ...item, user_id: item.user_id ?? activeUserId ?? undefined, id, status: 'pending', queued_at: new Date().toISOString() })
   write(items)
   return id
 }

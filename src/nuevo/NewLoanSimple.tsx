@@ -250,11 +250,15 @@ export function NewLoanSimple() {
       if (hasCollateral) {
         let imagePath: string | null = null
         if (collateralPhoto) {
-          const ext = collateralPhoto.name.split('.').pop()?.toLowerCase() || 'jpg'
-          const path = `${data}/${Date.now()}.${ext}`
-          const { error: uploadError } = await supabase.storage.from('collateral').upload(path, collateralPhoto)
-          if (!uploadError) imagePath = path
-          else uploadErrorMessage = uploadError.message
+          const ext = collateralPhoto.name.split('.').pop()?.toLowerCase() || ''
+          if (!['png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
+            uploadErrorMessage = 'Solo se permiten imágenes PNG, JPG o WEBP.'
+          } else {
+            const path = `${data}/${Date.now()}.${ext}`
+            const { error: uploadError } = await supabase.storage.from('collateral').upload(path, collateralPhoto)
+            if (!uploadError) imagePath = path
+            else uploadErrorMessage = uploadError.message
+          }
         }
         await supabase.from('loans').update({
           has_collateral: true,

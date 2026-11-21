@@ -39,9 +39,10 @@ Deno.serve(async (req) => {
   if (!token) return json({ error: 'Falta token' }, 401)
   const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
   const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+  const anonKey = Deno.env.get('SUPABASE_ANON_KEY') ?? ''
   const admin = createClient(supabaseUrl, serviceKey)
   const { data: { user }, error: authErr } = await admin.auth.getUser(token)
-  if (authErr || !user) return json({ error: 'No autorizado' }, 401)
+  if (authErr || !user || !user.email) return json({ error: 'No autorizado' }, 401)
   const { data: membership } = await admin.from('business_members').select('business_id, role, permissions').eq('user_id', user.id).eq('is_active', true).maybeSingle()
   if (!membership) return json({ error: 'No autorizado' }, 401)
   const isOwner = membership.role === 'owner'
@@ -55,6 +56,14 @@ Deno.serve(async (req) => {
   } catch {
     body = {}
   }
+  const callerPassword = body.password
+  if (!callerPassword || typeof callerPassword !== 'string') {
+    return json({ error: 'Falta confirmar tu contraseña actual' }, 400)
+  }
+  const verifier = createClient(supabaseUrl, anonKey || serviceKey, { auth: { persistSession: false } })
+  const { error: reauthErr } = await verifier.auth.signInWithPassword({ email: user.email, password: callerPassword })
+  if (reauthErr) return json({ error: 'Tu contraseña actual no es correcta' }, 401)
+
   const action = body.action as string | undefined
   if (action === 'create') {
     const { email, full_name, permissions, new_password } = body as {
@@ -103,8 +112,9 @@ Deno.serve(async (req) => {
     if (isManager && target.created_by !== user.id) {
       return json({ error: 'Un gerente solo puede resetear la contraseña de sus subordinados' }, 403)
     }
-    const { error } = await admin.auth.admin.updateUserById(user_id, { password: new_password })
+    const { error } = await admin.auth.admin.updateUserById(user_id as string, { password: new_password })
     if (error) return json({ error: error.message }, 400)
+    await admin.auth.admin.signOut(user_id as string, 'global').catch(() => {})
     return json({ ok: true })
   }
   return json({ error: 'Acción no reconocida' }, 400)

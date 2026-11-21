@@ -179,10 +179,12 @@ export function NewLoan() {
       if (hasCollateral) {
         let imagePath: string | null = null
         if (collateralPhoto) {
-          const ext = collateralPhoto.name.split('.').pop()?.toLowerCase() || 'jpg'
-          const path = `${data}/${Date.now()}.${ext}`
-          const { error: uploadError } = await supabase.storage.from('collateral').upload(path, collateralPhoto)
-          if (!uploadError) imagePath = path
+          const ext = collateralPhoto.name.split('.').pop()?.toLowerCase() || ''
+          if (['png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
+            const path = `${data}/${Date.now()}.${ext}`
+            const { error: uploadError } = await supabase.storage.from('collateral').upload(path, collateralPhoto)
+            if (!uploadError) imagePath = path
+          }
         }
         await supabase.from('loans').update({
           has_collateral: true,

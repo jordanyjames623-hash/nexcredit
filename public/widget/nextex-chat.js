@@ -23,7 +23,9 @@
 
   // 2. Sesión en memoria (Cero tracking / Cero localStorage)
   var sessionId =
-    "sess_" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
+    typeof crypto !== "undefined" && typeof crypto.randomUUID === "function"
+      ? "sess_" + crypto.randomUUID()
+      : "sess_" + Math.random().toString(36).substring(2, 9) + Date.now().toString(36);
 
   // 3. Consultar configuración pública del widget
   fetch(apiBase + "/api/widget/config?key=" + encodeURIComponent(embedKey))
@@ -42,7 +44,8 @@
 
   function initWidget(config) {
     var theme = config.theme || {};
-    var primaryColor = theme.primary_color || theme.primaryColor || "#4f46e5";
+    var rawColor = String(theme.primary_color || theme.primaryColor || "#4f46e5");
+    var primaryColor = /^#[0-9a-fA-F]{3,8}$/.test(rawColor) ? rawColor : "#4f46e5";
     var position = theme.position === "bottom-left" ? "bottom-left" : "bottom-right";
     var businessName = config.business_name || "Asistente Virtual";
     var greeting = config.greeting || "¡Hola! ¿En qué podemos ayudarte hoy?";

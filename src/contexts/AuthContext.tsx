@@ -1,6 +1,7 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import type { Session } from '@supabase/supabase-js'
 import { supabase } from '@/lib/supabase'
+import { setPaymentQueueUser } from '@/lib/paymentQueue'
 
 type Membership = {
   business_id: string
@@ -92,12 +93,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     supabase.auth.getSession().then(async ({ data }) => {
       if (!mounted) return
       setSession(data.session)
-      if (data.session) await loadAll(data.session.user.id)
+      setPaymentQueueUser(data.session?.user.id ?? null)
+      if (data.session) {
+        await loadAll(data.session.user.id)
+      } else {
+        void clearLocalSessionData()
+      }
       setLoading(false)
     })
 
     const { data: sub } = supabase.auth.onAuthStateChange(async (_event, next) => {
       setSession(next)
+      setPaymentQueueUser(next?.user.id ?? null)
       if (next) {
         await loadAll(next.user.id)
       } else {

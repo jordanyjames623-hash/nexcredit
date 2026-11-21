@@ -73,7 +73,7 @@ export function MfaEnroll({ onDone }: { onDone: () => void }) {
       {qr.startsWith('data:') ? (
         <img src={qr} alt="Código QR para la app autenticadora" className="mx-auto block w-48 rounded bg-white p-2" />
       ) : qr.startsWith('<') ? (
-        <div className="mx-auto w-fit rounded bg-white p-2" dangerouslySetInnerHTML={{ __html: qr }} />
+        <img src={`data:image/svg+xml;utf8,${encodeURIComponent(qr)}`} alt="Código QR para la app autenticadora" className="mx-auto block w-48 rounded bg-white p-2" />
       ) : null}
       {enrollment && (
         <div className="space-y-2">

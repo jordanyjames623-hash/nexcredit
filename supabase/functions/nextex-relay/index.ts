@@ -18,6 +18,8 @@
 // La verificación JWT de Supabase se deja ENCENDIDA (por defecto): el frontend llama con
 // supabase.functions.invoke, que ya manda la anon key como Authorization.
 
+import { createClient } from 'npm:@supabase/supabase-js@2'
+
 const NEXTTEX_BASE = 'https://nextex-seven.vercel.app'
 
 const ROUTES: Record<string, string> = {
@@ -105,8 +107,29 @@ Deno.serve(async (req: Request) => {
       detail: isObject(payload.detail) ? payload.detail : {},
     }
   } else {
-    // metrica
-    if (typeof payload.metric !== 'string' || typeof payload.value !== 'number') {
+    // metrica: exige sesión real de un miembro activo de un negocio (no basta la anon key pública)
+    const authHeader = req.headers.get('Authorization') ?? ''
+    const token = authHeader.startsWith('Bearer ') ? authHeader.slice(7) : ''
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? ''
+    const serviceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? ''
+    if (!token || !supabaseUrl || !serviceKey) {
+      return json(401, { ok: false, error: 'unauthorized' }, headers)
+    }
+    const admin = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } })
+    const { data: { user }, error: authErr } = await admin.auth.getUser(token)
+    if (authErr || !user) {
+      return json(401, { ok: false, error: 'unauthorized' }, headers)
+    }
+    const { data: member } = await admin
+      .from('business_members')
+      .select('business_id')
+      .eq('user_id', user.id)
+      .eq('is_active', true)
+      .maybeSingle()
+    if (!member) {
+      return json(403, { ok: false, error: 'forbidden' }, headers)
+    }
+    if (typeof payload.metric !== 'string' || typeof payload.value !== 'number' || !Number.isFinite(payload.value) || payload.value < 0) {
       return json(400, { ok: false, error: 'invalid_metric' }, headers)
     }
     nextBody = {

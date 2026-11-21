@@ -11,7 +11,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'method_not_allowed' })
   }
   const key = req.headers['x-nextex-key']
-  if (!key || typeof key !== 'string') {
+  if (!key || typeof key !== 'string' || !/^nx_[0-9a-f]{48}$/.test(key)) {
     return res.status(401).json({ error: 'unauthorized' })
   }
   const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL

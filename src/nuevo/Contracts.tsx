@@ -190,9 +190,15 @@ export function Contracts() {
     e.target.value = ''
     if (!file || !business?.id) return
     if (file.size > 10 * 1024 * 1024) { setActionError('El archivo no puede pesar más de 10 MB.'); return }
+    const ext = file.name.split('.').pop()?.toLowerCase() || ''
+    const validExt = ['pdf', 'png', 'jpg', 'jpeg', 'webp'].includes(ext)
+    const validMime = !file.type || ['application/pdf', 'image/png', 'image/jpeg', 'image/webp'].includes(file.type)
+    if (!validExt || !validMime) {
+      setActionError('Solo se permiten archivos PDF o imágenes (PNG, JPG, WEBP).')
+      return
+    }
     setUploadingId(c.id)
     setActionError(null)
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'pdf'
     const path = `${business.id}/${c.id}/${Date.now()}.${ext}`
     const { error: upErr } = await supabase.storage.from('contratos').upload(path, file)
     if (upErr) { setUploadingId(null); setActionError('No se pudo subir el firmado: ' + upErr.message); return }

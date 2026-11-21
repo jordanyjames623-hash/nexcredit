@@ -504,8 +504,12 @@ function CollateralEditor({ loan, onSaved }: { loan: LoanRow; onSaved: () => voi
     e.target.value = ''
     if (!file) return
     if (file.size > 5 * 1024 * 1024) { setError('La imagen no puede pesar más de 5 MB.'); return }
+    const ext = file.name.split('.').pop()?.toLowerCase() || ''
+    if (!['png', 'jpg', 'jpeg', 'webp'].includes(ext)) {
+      setError('Solo se permiten imágenes PNG, JPG o WEBP.')
+      return
+    }
     setError(null); setUploading(true)
-    const ext = file.name.split('.').pop()?.toLowerCase() || 'jpg'
     const path = `${loan.id}/${Date.now()}.${ext}`
     const { error: uploadError } = await supabase.storage.from('collateral').upload(path, file)
     if (uploadError) { setUploading(false); setError(uploadError.message); return }
