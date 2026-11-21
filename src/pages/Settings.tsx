@@ -195,6 +195,7 @@ function LogoUpload({ business, onUploaded }: { business: Business; onUploaded: 
     if (file.size > 2 * 1024 * 1024) { setError('La imagen no puede pesar más de 2 MB.'); return }
     const ext = file.name.split('.').pop()?.toLowerCase() || ''
     if (!['png', 'jpg', 'jpeg', 'webp'].includes(ext)) { setError('Solo se permiten imágenes PNG, JPG o WEBP.'); return }
+    if (!['image/png', 'image/jpeg', 'image/webp'].includes(file.type)) { setError('Solo se permiten imágenes PNG, JPG o WEBP.'); return }
     setError(null); setBusy(true)
     const path = `${business.id}/logo.${ext}`
 
