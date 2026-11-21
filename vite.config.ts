@@ -40,8 +40,13 @@ export default defineConfig({
         runtimeCaching: [
           {
             // Solo lecturas GET a la API de Supabase se cachean para consulta offline.
-            urlPattern: ({ url, request }) =>
-              request.method === 'GET' && url.hostname.endsWith('.supabase.co'),
+            urlPattern: ({ request, url }) => {
+              if (request.method !== 'GET' || !url.hostname.endsWith('.supabase.co')) return false
+              if (!url.pathname.startsWith('/rest/v1/')) return false
+              const excluded = ['api_keys', 'backup_jobs', 'export_business_backup', 'get_my_business_nextex_identity']
+              if (excluded.some((s) => url.pathname.includes(s) || url.search.includes(s))) return false
+              return true
+            },
             handler: 'NetworkFirst',
             options: {
               cacheName: 'capitalia-reads',
