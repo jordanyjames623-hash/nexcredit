@@ -1,3 +1,4 @@
+import { createClient } from 'npm:@supabase/supabase-js@2'
 // NEXCREDIT-2 — Relay hacia nextex.
 //
 // El frontend SOLO llama a esta función; la clave de sitio de nextex (ntx_...) vive en
@@ -64,13 +65,7 @@ Deno.serve(async (req: Request) => {
   const headers = corsHeaders(req.headers.get('origin'))
   if (req.method === 'OPTIONS') return new Response(null, { status: 204, headers })
   if (req.method !== 'POST') return json(405, { ok: false, error: 'method_not_allowed' }, headers)
-
-  const siteKey = Deno.env.get('NEXTEX_SITE_KEY')
-  if (!siteKey) {
-    console.error('[nextex-relay] NEXTEX_SITE_KEY no configurado en los secrets de la función.')
-    return json(500, { ok: false, error: 'server_misconfigured' }, headers)
-  }
-
+  const siteKey = Deno.env.get('NEXTEX_SITE_KEY') ?? ''
   let body: unknown
   try {
     body = await req.json()
@@ -83,7 +78,18 @@ Deno.serve(async (req: Request) => {
     return json(400, { ok: false, error: 'unknown_type' }, headers)
   }
   if (!isObject(payload)) return json(400, { ok: false, error: 'invalid_payload' }, headers)
-
+  // Las métricas alimentan los números financieros de Nextex: solo un usuario
+  // real, miembro activo de un negocio, puede enviarlas. La anon key pública
+  // no basta (un tercero podría adulterar las métricas).
+  if (type === 'metrica') {
+    const auth = req.headers.get('authorization') ?? ''
+    const token = auth.startsWith('Bearer ') ? auth.slice(7) : ''
+    const admin = createClient(Deno.env.get('SUPABASE_URL')!, Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!)
+    const { data: { user } } = await admin.auth.getUser(token)
+    if (!user) return json(401, { ok: false, error: 'unauthorized' }, headers)
+    const { data: member } = await admin.from('business_members').select('id').eq('user_id', user.id).eq('is_active', true).maybeSingle()
+    if (!member) return json(401, { ok: false, error: 'unauthorized' }, headers)
+  }
   // Armar el cuerpo exacto que nextex espera para cada endpoint.
   let nextBody: Record<string, unknown>
   if (type === 'vigia') {
@@ -116,7 +122,6 @@ Deno.serve(async (req: Request) => {
       date: typeof payload.date === 'string' ? payload.date : undefined,
     }
   }
-
   let res: Response
   try {
     res = await fetch(`${NEXTTEX_BASE}${ROUTES[type]}`, {
