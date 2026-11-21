@@ -41,6 +41,10 @@ const Intelligence = lazyPage(() => import('@/pages/Intelligence').then((m) => (
 const CollateralAdmin = lazyPage(() => import('@/pages/Collateral').then((m) => ({ default: m.CollateralAdmin })))
 const Applications = lazyPage(() => import('@/pages/Applications').then((m) => ({ default: m.Applications })))
 const ActivityLog = lazyPage(() => import('@/pages/ActivityLog').then((m) => ({ default: m.ActivityLog })))
+// Portal del cliente: actor distinto (no es staff), rutas públicas propias, fuera de ProtectedRoute.
+const PortalLogin = lazyPage(() => import('@/portal/PortalLogin').then((m) => ({ default: m.PortalLogin })))
+  const PortalSummary = lazyPage(() => import('@/portal/PortalSummary').then((m) => ({ default: m.PortalSummary })))
+    const PortalLoanDetail = lazyPage(() => import('@/portal/PortalLoanDetail').then((m) => ({ default: m.PortalLoanDetail })))
 // Panel SaaS (restaurado 2026-10-25): en el rediseño quedó fuera de las rutas y /superadmin
 // caía al inicio. El componente se protege solo con profile.is_platform_admin.
 const SuperAdmin = lazyPage(() => import('@/pages/SuperAdmin').then((m) => ({ default: m.SuperAdmin })))
@@ -51,6 +55,9 @@ export default function NuevoApp() {
       <Route path="/registrar" element={<Signup />} />
       <Route path="/recuperar" element={<ForgotPassword />} />
       <Route path="/restablecer" element={<ResetPassword />} />
+      <Route path="/portal/entrar" element={<PortalLogin />} />
+      <Route path="/portal" element={<PortalSummary />} />
+      <Route path="/portal/prestamos/:id" element={<PortalLoanDetail />} />
 
       <Route element={<ProtectedRoute />}>
         <Route element={<Layout />}>
